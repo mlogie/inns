@@ -1,0 +1,116 @@
+#library(httr)
+#library(digest)
+#library(jsonlite)
+#library(dplyr)
+# Function to get securit nonce and authentication token
+# Takes:
+#   URLnonce: set to the dev warehouse url for now
+#   password: user password
+# Returns: text string to append to website for posting
+getnonce <- function(URLnonce = 'http://devwarehouse.indicia.org.uk/index.php/services/security/get_nonce',
+                     password){
+  r <- POST(URLnonce,
+            body = list(website_id = 109))
+  nonce <- content(r, 'text')
+  key <- paste0(nonce, ':', password)
+  authtoken <- digest(key, 'sha1', serialize = FALSE)
+  
+  URLappend <- paste0('?auth_token=', authtoken,
+                      '&nonce=', nonce,
+                      '&website_id=109')
+  
+  return(URLappend)
+}
+
+# Function to post a json to the data warehouse
+# Takes:
+#   URLauth: the URL string from function getnonce()
+#   submission: the sample, in json format
+# Returns: the content of the return message from the warehouse
+postsubmission <- function(URLauth, submission){
+  URL <- paste0('http://devwarehouse.indicia.org.uk/index.php/services/data/save',
+                URLauth)
+  
+  r <- httr::POST(URL,
+                  body = list('submission' = I(submission)))
+  return(content(r, 'text'))
+}
+
+# Function to post an image to the data warehouse
+# Takes:
+#   URLauth: the URL string from function getnonce()
+#   imgpath: the path to the image
+# Returns: the image path from the server e.g. '123456789image.png'
+postimage <- function(URLauth, imgpath){
+  URLimg <- paste0('http://devwarehouse.indicia.org.uk/index.php/services/data/handle_media',
+                   URLauth)
+  
+  res <- POST(url=URLimg,
+              body=list('media_upload'=upload_file(imgpath)))
+  return(content(res, 'text'))
+}
+
+# Function to take some parameters and turn it into a valid json format
+# Takes:
+#   imgString: the image string returned from function postimage
+#   email: email address of the source
+#   tel: telephone number of the source
+#   experience: placeholder for now as I can't work out how to get this
+#               parameter to work
+#   correspondance: text with information from source (I know I spelled this
+#                   incorrectly, but it's how it's spelt in the warehouse)
+# Returns: nicely formatted json
+createjson <- function(imgString = NULL, email = NULL,
+                       tel = NULL, date = NULL, location = 'SU990887',
+                       experience = 1, correspondance = ''){
+  #  "smpAttr:1304":{"value":"Enter recorder experience"}
+  recExp <- c('General nature recording',
+              'Entomology',
+              'Apiculture')
+
+  # Create the sample fields
+  fields <- list(website_id = list(value = "109"),
+                 survey_id = list(value = "500"),
+                 entered_sref = list(value = location),
+                 entered_sref_system = list(value = "OSGB"),
+                 comment = list(value = "This is an example record"),
+                 `smpAttr:1140` = list(value = "This is the admin comment"),
+                 `smpAttr:43` = list(value = "TRUE"),
+                 `smpAttr:1141` = list(value = "test"))
+  if(!is.null(tel)){
+    fields$`smpAttr:20` = list(value = tel)
+  }
+  if(!is.null(email)){
+    fields$`smpAttr:35` = list(value = email)
+  }
+  if(!is.null(date)){
+    fields$date = list(value = date)
+  }
+
+  # Create the occurrence fields
+  occ_fields <- list(zero_abundance = list(value = "f"),
+                     taxa_taxon_list_id = list(value = "34"), #289248
+                     website_id = list(value = "109"),
+                     record_status = list(value = "C"))
+  occurrence <- list(list(fkId = "sample_id",
+                          model = list(id = "occurrence",
+                                       fields = occ_fields)))
+  
+  # For every image supplied, create an image instance
+  if(!is.null(imgString)){
+    media <- lapply(imgString, FUN = function(imgx){
+      med_fields <- list(path = list(value = imgx),
+                         caption = list(value = "Enter comment here"))
+      list(fkId = "occurrence_id",
+           model = list(id = "occurrence_medium",
+                        fields = med_fields))
+    })
+    # Add the images to the occurrence as a submodel
+    occurrence[[1]]$model$subModels <- media
+  }
+  
+  outjson <- list(id = "sample", fields = fields, submodels = occurrence) %>%
+    toJSON(auto_unbox = TRUE)
+  
+  return(outjson)
+}
