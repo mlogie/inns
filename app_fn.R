@@ -44,26 +44,29 @@ createPNG <- function(attachment_file, width = 400, height = 400, alt = 'image')
 # Function requires:
 #   emails - RDCOM pointer to list of emails
 #   values - shiny reactive values list
+#   global - global variables for use in the UI
+#   datesDF - dataframe of dates so emails come out in order
 # Function returns:
-#   values
+#   a list of list(values = values, global = global)
 # This function updates:
-#   values$subject - subject
-#   values$sender - sender
-#   values$msgbody - message body
+#   values/global$subject - subject
+#   values/global$sender - sender
+#   values/global$msgbody - message body
 # The email for which information extracted is the value saved as values$i
-extract_contents <- function(emails, values, global){
+extract_contents <- function(emails, values, global, datesDF){
   values$sender <- global$sender <- tryCatch({
-    if(emails(values$i)$Sender()$AddressEntryUserType() == 30){
-      emails(values$i)[['SenderEmailAddress']]
+    if(emails(datesDF$j[values$i])$Sender()$AddressEntryUserType() == 30){
+      emails(datesDF$j[values$i])[['SenderEmailAddress']]
     } else {
-      emails(values$i)[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
+      emails(datesDF$j[values$i])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
     }
   }, error = function(error) {
     return('Could not obtain sender')
   })
-  values$subject <- global$subject <- emails(values$i)[['Subject']]
-  values$msgbody <- global$msgbody <- emails(values$i)[['Body']]
-  values$date <- global$date <- as.Date("1899-12-30") + floor(emails(values$i)$ReceivedTime())
+  values$subject <- global$subject <- emails(datesDF$j[values$i])[['Subject']]
+  values$msgbody <- global$msgbody <- emails(datesDF$j[values$i])[['Body']]
+  values$date <- global$date <-
+    as.Date("1899-12-30") + floor(emails(datesDF$j[values$i])$ReceivedTime())
   list(values = values, global = global)
 }
 
@@ -73,6 +76,7 @@ extract_contents <- function(emails, values, global){
 #   emails - RDCOM pointer to list of emails
 #   values - shiny reactive values list
 #   output - shiny output list
+#   datesDF - dataframe of dates so emails come out in order
 # Function returns a list containing: (output, values)
 # This function updates:
 #   values$attachments - the name of the current attachment (based on values$img_num)
@@ -82,8 +86,8 @@ extract_contents <- function(emails, values, global){
 #       "Attachment x of y"
 #       "Unknown image format for attachment"
 #       "No attachments"
-format_attachments <- function(emails, values, output){
-  attach_obj <- emails(values$i)[['attachments']]
+format_attachments <- function(emails, values, output, datesDF){
+  attach_obj <- emails(datesDF$j[values$i])[['attachments']]
   if(attach_obj$Count() > 0){
     values$attachments <- attach_obj$Item(values$img_num)[['DisplayName']]
     values$num_attachments <- attach_obj$Count()
@@ -127,6 +131,24 @@ format_attachments <- function(emails, values, output){
   }
   list(output = output, values = values)
 }
+
+# General wrapper function to jump to email i
+jumpTo <- function(emails, values, global, datesDF, output, session){
+  ecOut <- extract_contents(emails, values, global, datesDF)
+  values <- ecOut$values
+  global <- ecOut$global
+  values$img_num <- 1
+  # Grab the attachments
+  return_list <- format_attachments(emails, values, output, datesDF)
+  updateTextInput(session, inputId = 'sender', label = 'Sender',
+                  value = global$sender)
+  updateTextInput(session, inputId = 'date', label = 'Date',
+                  value = as.character(global$date))
+  list(output = return_list$output,
+       values = return_list$values,
+       global = global)
+}
+# Get the contents of the email
 
 # Function to send an email
 # Function requires:

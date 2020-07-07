@@ -1,4 +1,3 @@
-setwd('C:\\Users\\marlog\\Documents\\INNS')
 library(shiny)
 library(imager)
 library(jpeg)
@@ -12,6 +11,7 @@ library(httr)
 library(digest)
 library(jsonlite)
 library(dplyr)
+library(pbapply)
 source('./jvb.R')
 source('./pwd.R')
 #install.packages("RDCOMClient", repos = "http://www.omegahat.net/R")
@@ -27,19 +27,29 @@ outlookNameSpace = OutApp$GetNameSpace("MAPI")
 folder <- outlookNameSpace$Folders(1)$Folders(folderName)
 emails <- folder$Items
 num_emails <- folder$Items()$Count()
+
+# Emails may not be in date order, so assign a lookup df to date order
+cat('Reading in emails\n')
+dates <- pblapply(1:num_emails, FUN = function(i){
+  floor(emails(i)$ReceivedTime())
+}) %>% unlist() + as.Date("1899-12-30")
+datesDF <- data.frame(dates = dates, j = 1:length(dates)) %>%
+  arrange(desc(dates))
+datesDF$i <- 1:nrow(datesDF)
+
 global = list(
   sender = tryCatch({
-    if(emails(1)$Sender()$AddressEntryUserType() == 30){
-      emails(1)[['SenderEmailAddress']]
+    if(emails(datesDF$j[1])$Sender()$AddressEntryUserType() == 30){
+      emails(datesDF$j[1])[['SenderEmailAddress']]
     } else {
-      emails(1)[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
+      emails(datesDF$j[1])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
     }
   }, error = function(error) {
     return('Could not obtain sender')
   }),
-  subject = emails(1)[['Subject']],
-  msgbody = emails(1)[['Body']],
-  date = as.Date("1899-12-30") + floor(emails(1)$ReceivedTime()),
+  subject = emails(datesDF$j[1])[['Subject']],
+  msgbody = emails(datesDF$j[1])[['Body']],
+  date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
   tel = '',
   location = ''
 )
@@ -55,16 +65,21 @@ ui <- fluidPage(
       actionButton(inputId = 'fore',label = 'Next Email'),
       actionButton(inputId = 'aft_img', label = 'Previous Image'),
       actionButton(inputId = 'fore_img', label = 'Next Image'),
+      dateInput(inputId = 'dateselector', label = 'Select Email Date'),
       htmlOutput('newline'),
       textOutput('sender'),
       textOutput('subject'),
       textOutput('date'),
       textOutput('attachment_info'),
       actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
-      textInput(inputId = 'sender', label = 'Sender', value = global$sender),
-      textInput(inputId = 'species', label = 'Species', value = 'Vespa velutina'),
-      textInput(inputId = 'date', label = 'Date', value = as.character(global$date)),
-      textInput(inputId = 'location', label = 'Location', placeholder = 'gridref of observation'),
+      textInput(inputId = 'sender', label = 'Sender',
+                value = global$sender),
+      textInput(inputId = 'species', label = 'Species',
+                value = 'Vespa velutina'),
+      textInput(inputId = 'date', label = 'Date',
+                value = as.character(global$date)),
+      textInput(inputId = 'location', label = 'Location',
+                placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database')
     ),
@@ -79,68 +94,87 @@ ui <- fluidPage(
 # Create the server
 server <- function(input, output, session){
 
-  values <- reactiveValues(i = 1,
-                           sender = tryCatch({
-                             if(emails(1)$Sender()$AddressEntryUserType() == 30){
-                               emails(1)[['SenderEmailAddress']]
-                             } else {
-                               emails(1)[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
-                             }
-                           }, error = function(error) {
-                             return('Could not obtain sender')
-                           }),
-                           subject = emails(1)[['Subject']],
-                           msgbody = emails(1)[['Body']],
-                           date = as.Date("1899-12-30") + floor(emails(1)$ReceivedTime()),
-                           attachments = ifelse(emails(1)[['attachments']]$Count()>0,
-                                                emails(1)[['attachments']]$Item(1)[['DisplayName']],
-                                                ''),
-                           num_attachments = emails(1)[['attachments']]$Count(),
-                           num_emails = num_emails,
-                           img_num = 1)
+  values <-
+    reactiveValues(i = 1,
+      sender = tryCatch({
+        if(emails(datesDF$j[1])$Sender()$AddressEntryUserType() == 30){
+          emails(datesDF$j[1])[['SenderEmailAddress']]
+          } else {
+            emails(datesDF$j[1])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
+          }
+        }, error = function(error) {
+          return('Could not obtain sender')
+        }),
+      subject = emails(datesDF$j[1])[['Subject']],
+      msgbody = emails(datesDF$j[1])[['Body']],
+      date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
+      attachments = ifelse(emails(datesDF$j[1])[['attachments']]$Count()>0,
+                           emails(datesDF$j[1])[['attachments']]$Item(1)[['DisplayName']],
+                           ''),
+      num_attachments = emails(datesDF$j[1])[['attachments']]$Count(),
+      num_emails = num_emails,
+      img_num = 1)
   
   output$newline <- renderUI({
     HTML(paste('<br>','','</br>'))
   })
 
-  # Going backward, subtract one from the email counter (i),
+  # Jump to selected date
+  observeEvent(input$dateselector, {
+    if(any(datesDF$dates==input$dateselector)){
+      lastmatch <- which(datesDF$dates==input$dateselector) %>% tail(1)
+      values$i <- datesDF$i[lastmatch]
+    } else {
+      # We don't have an email which matches that date, so find the nearest,
+      # looking forward in time first
+      diffs <- datesDF$dates - input$dateselector
+      if(any(diffs > 0)){
+        lastmatch <- which(diffs==min(diffs[diffs > 0])) %>% tail(1)
+        values$i <- datesDF$i[lastmatch]
+      } else {
+        # A time further in the future than any emails has been picked.
+        # Go to the top
+        values$i <- 1
+      }
+    }
+    
+    # Call the wrapper function to jump to the email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
+  })
+  
+  # Going forward in time, subtract one from the email counter (i),
   # or loop to the end if we hit the beginning
-  observeEvent(input$aft, {
+  observeEvent(input$fore, {
     if(values$i!=1){
       values$i <- values$i - 1
     } else {
       values$i <- values$num_emails
     }
     
-    # Get the contents of the email
-    ecOut <- extract_contents(emails, values, global)
-    values <- ecOut$values
-    global <- ecOut$global
-    values$img_num <- 1
-    # Grab the attachments
-    return_list <- format_attachments(emails, values, output)
-    output <- return_list$output
-    values <- return_list$values
+    # Call the wrapper function to jump to the email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
   })
   
-  # Going forward, add one to the email counter (i),
+  # Going backward in time, add one to the email counter (i),
   # or loop back to the beginning if we hit the end
-  observeEvent(input$fore, {
+  observeEvent(input$aft, {
     if(values$i<values$num_emails){
       values$i <- values$i + 1
     } else {
       values$i <- 1
     }
     
-    # Get the contents of the email
-    ecOut <- extract_contents(emails, values, global)
-    values <- ecOut$values
-    global <- ecOut$global
-    values$img_num <- 1
-    # Grab the attachments
-    return_list <- format_attachments(emails, values, output)
-    output <- return_list$output
-    values <- return_list$values
+    # Call the wrapper function to jump to an email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
   })
   
   # Go backward one image in the email
@@ -154,7 +188,7 @@ server <- function(input, output, session){
     # No need to get any email info, just grab the relevant attachment
     if(values$num_attachments > 1)
     {
-      return_list <- format_attachments(emails, values, output)
+      return_list <- format_attachments(emails, values, output, datesDF)
       output <- return_list$output
       values <- return_list$values
     }
@@ -171,7 +205,7 @@ server <- function(input, output, session){
     # No need to get any email info, just grab the relevant attachment
     if(values$num_attachments>1)
     {
-      return_list <- format_attachments(emails, values, output)
+      return_list <- format_attachments(emails, values, output, datesDF)
       output <- return_list$output
       values <- return_list$values
     }
