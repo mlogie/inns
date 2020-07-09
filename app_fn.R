@@ -151,9 +151,11 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   return_list <- format_attachments(emails, values, output, datesDF)
   updateTextInput(session, inputId = 'sender', label = 'Sender',
                   value = global$sender)
+  updateTextInput(session, inputId = 'subject', label = 'Subject',
+                  value = global$subject)
   updateTextInput(session, inputId = 'date', label = 'Date',
                   value = as.character(global$date))
-  updateTextInput(session, inputId = 'i', label = 'Enter Index',
+  updateTextInput(session, inputId = 'i', label = 'Select Index (i)',
                   value = as.character(values$i))
   list(output = return_list$output,
        values = return_list$values,

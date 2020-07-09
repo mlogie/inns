@@ -6,12 +6,12 @@ library(shinyFiles)
 library(shinyWidgets)
 library(sendmailR)
 library(RDCOMClient)
-source('./app_fn.R')
 library(httr)
 library(digest)
 library(jsonlite)
 library(dplyr)
 library(pbapply)
+source('./app_fn.R')
 source('./jvb.R')
 source('./pwd.R')
 #install.packages("RDCOMClient", repos = "http://www.omegahat.net/R")
@@ -38,7 +38,7 @@ datesDF <- pblapply(1:num_emails, FUN = function(i){
 datesDF$j <- 1:nrow(datesDF)
 datesDF <- datesDF %>% arrange(desc(dates))
 datesDF$i <- 1:nrow(datesDF)
-datesDF$Subject <- substr(datesDF$subj,1,15)
+datesDF$Subject <- substr(datesDF$subj,1,100)
 datesDF$Date <- as.character(datesDF$dates)
 
 global = list(
@@ -61,26 +61,34 @@ ui <- fluidPage(
       actionButton(inputId = 'fore',label = 'Next Email'),
       actionButton(inputId = 'aft_img', label = 'Previous Image'),
       actionButton(inputId = 'fore_img', label = 'Next Image'),
-      dateInput(inputId = 'dateselector', label = 'Select Email Date'),
-      htmlOutput('newline'),
-      textOutput('sender'),
-      textOutput('subject'),
-      textOutput('date'),
+      HTML("<hr>"),
       textOutput('attachment_info'),
-      actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
+      HTML("<br>"),
       textInput(inputId = 'sender', label = 'Sender',
                 value = global$sender),
-      textInput(inputId = 'species', label = 'Species',
-                value = 'Vespa velutina'),
+      textInput(inputId = 'subject', label = 'Subject',
+                value = global$subject),
       textInput(inputId = 'date', label = 'Date',
                 value = as.character(global$date)),
+      textInput(inputId = 'species', label = 'Species',
+                value = 'Vespa velutina'),
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
-      textInput(inputId = 'i', label = 'Enter Index',
-                value = '1'),
-      actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'),
+      HTML("<br><br>"),
+      actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
+      HTML("<hr>"),
+      dateInput(inputId = 'dateselector', label = 'Select Email Date'),
+      fluidRow(
+        column(6,
+               textInput(inputId = 'i', label = 'Select Index (i)',
+                         value = '1')),
+        column(6,
+               HTML("<br>"),
+               actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'))
+        ),
+      HTML("<hr>"),
       dataTableOutput(outputId = 'summaryDF')
     ),
     
@@ -107,10 +115,6 @@ server <- function(input, output, session){
       num_emails = num_emails,
       img_num = 1)
   
-  output$newline <- renderUI({
-    HTML(paste('<br>','','</br>'))
-  })
-
   # Jump to selected date
   observeEvent(input$dateselector, {
     if(any(datesDF$dates==input$dateselector)){
@@ -218,20 +222,8 @@ server <- function(input, output, session){
     }
   })
   
-  output$subject <- renderText({
-    paste(values$subject)
-  })
-  
   output$msgbody <- renderText({
     paste(values$msgbody)
-  })
-  
-  output$date <- renderText({
-    paste(values$date)
-  })
-  
-  output$sender <- renderText({
-    paste(values$sender)
   })
   
   output$summaryDF <- renderDataTable({
