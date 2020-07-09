@@ -40,6 +40,23 @@ createPNG <- function(attachment_file, width = 400, height = 400, alt = 'image')
        alt = alt)
 }
 
+# Function to get email sender from email pointer
+getSender <- function(email){
+  sender <- tryCatch({
+    if(email$Sender()$AddressEntryUserType() == 30){
+      email[['SenderEmailAddress']]
+    } else {
+      email[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
+    }
+  }, error = function(error) {
+    return('Could not obtain sender')
+  })
+  if(is.null(sender)){
+    sender <- 'Could not obtain sender'
+  }
+  sender
+}
+
 # Function to grab the 
 # Function requires:
 #   emails - RDCOM pointer to list of emails
@@ -54,15 +71,7 @@ createPNG <- function(attachment_file, width = 400, height = 400, alt = 'image')
 #   values/global$msgbody - message body
 # The email for which information extracted is the value saved as values$i
 extract_contents <- function(emails, values, global, datesDF){
-  values$sender <- global$sender <- tryCatch({
-    if(emails(datesDF$j[values$i])$Sender()$AddressEntryUserType() == 30){
-      emails(datesDF$j[values$i])[['SenderEmailAddress']]
-    } else {
-      emails(datesDF$j[values$i])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
-    }
-  }, error = function(error) {
-    return('Could not obtain sender')
-  })
+  values$sender <- global$sender <- getSender(emails(datesDF$j[values$i]))
   values$subject <- global$subject <- emails(datesDF$j[values$i])[['Subject']]
   values$msgbody <- global$msgbody <- emails(datesDF$j[values$i])[['Body']]
   values$date <- global$date <-
@@ -144,6 +153,8 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
                   value = global$sender)
   updateTextInput(session, inputId = 'date', label = 'Date',
                   value = as.character(global$date))
+  updateTextInput(session, inputId = 'i', label = 'Enter Index',
+                  value = as.character(values$i))
   list(output = return_list$output,
        values = return_list$values,
        global = global)

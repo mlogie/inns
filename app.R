@@ -30,23 +30,19 @@ num_emails <- folder$Items()$Count()
 
 # Emails may not be in date order, so assign a lookup df to date order
 cat('Reading in emails\n')
-dates <- pblapply(1:num_emails, FUN = function(i){
-  floor(emails(i)$ReceivedTime())
-}) %>% unlist() + as.Date("1899-12-30")
-datesDF <- data.frame(dates = dates, j = 1:length(dates)) %>%
-  arrange(desc(dates))
+datesDF <- pblapply(1:num_emails, FUN = function(i){
+  data.frame(dates = floor(emails(i)$ReceivedTime()) + as.Date("1899-12-30"),
+             subj = emails(i)[['Subject']],
+             Sender = getSender(emails(i)))
+}) %>% bind_rows()
+datesDF$j <- 1:nrow(datesDF)
+datesDF <- datesDF %>% arrange(desc(dates))
 datesDF$i <- 1:nrow(datesDF)
+datesDF$Subject <- substr(datesDF$subj,1,15)
+datesDF$Date <- as.character(datesDF$dates)
 
 global = list(
-  sender = tryCatch({
-    if(emails(datesDF$j[1])$Sender()$AddressEntryUserType() == 30){
-      emails(datesDF$j[1])[['SenderEmailAddress']]
-    } else {
-      emails(datesDF$j[1])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
-    }
-  }, error = function(error) {
-    return('Could not obtain sender')
-  }),
+  sender = getSender(emails(datesDF$j[1])),
   subject = emails(datesDF$j[1])[['Subject']],
   msgbody = emails(datesDF$j[1])[['Body']],
   date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
@@ -81,7 +77,11 @@ ui <- fluidPage(
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
-      actionButton(inputId = 'upload_Indicia', label = 'Upload to Database')
+      actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
+      textInput(inputId = 'i', label = 'Enter Index',
+                value = '1'),
+      actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'),
+      dataTableOutput(outputId = 'summaryDF')
     ),
     
     mainPanel(
@@ -96,15 +96,7 @@ server <- function(input, output, session){
 
   values <-
     reactiveValues(i = 1,
-      sender = tryCatch({
-        if(emails(datesDF$j[1])$Sender()$AddressEntryUserType() == 30){
-          emails(datesDF$j[1])[['SenderEmailAddress']]
-          } else {
-            emails(datesDF$j[1])[['Sender']][['GetExchangeUser']][['PrimarySmtpAddress']]
-          }
-        }, error = function(error) {
-          return('Could not obtain sender')
-        }),
+      sender = getSender(datesDF$j[1]),
       subject = emails(datesDF$j[1])[['Subject']],
       msgbody = emails(datesDF$j[1])[['Body']],
       date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
@@ -138,6 +130,21 @@ server <- function(input, output, session){
       }
     }
     
+    # Call the wrapper function to jump to the email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
+  })
+  
+  # Jump to selected index value
+  observeEvent(input$jumpToIndex, {
+    if(any(as.character(datesDF$i)==input$i) & !is.na(as.numeric(input$i))){
+      values$i <- as.numeric(input$i)
+    } else {
+      values$i <- 1
+    }
+    as.numeric(as.character('t'))
     # Call the wrapper function to jump to the email and get outputs
     retList <- jumpTo(emails, values, global, datesDF, output, session)
     output <- retList$output
@@ -225,6 +232,10 @@ server <- function(input, output, session){
   
   output$sender <- renderText({
     paste(values$sender)
+  })
+  
+  output$summaryDF <- renderDataTable({
+    (datesDF %>% select(i, Subject, Date, Sender))
   })
 
   # Send an email if this button is pressed
