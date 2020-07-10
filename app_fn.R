@@ -25,8 +25,13 @@ library(tools)
 createJPEG <- function(attachment_file, width = 400, height = 400, alt = 'image'){
   myJPG <- readJPEG(attachment_file,native=TRUE)
   res = dim(myJPG)[2:1]
-  plot(1,1,xlim=c(1,res[1]),ylim=c(1,res[2]),asp=1,
-       type='n',xaxs='i',yaxs='i',xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
+  tryCatch({
+    plot(1,1,xlim=c(1,(res[1])),ylim=c(1,(res[2])),asp=1,type='n',
+         xaxs='i',yaxs='i',xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
+  }, error = function(error) {
+    plot(1,1,xlim=c(1,(res[2])),ylim=c(1,(res[1])),asp=1,type='n',
+         xaxs='i',yaxs='i',xaxt='n',yaxt='n',xlab='',ylab='',bty='n')
+  })
   rasterImage(myJPG,1,1,res[1],res[2])
   dev.off()
   list(src = attachment_file,
