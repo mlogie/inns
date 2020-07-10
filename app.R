@@ -1,20 +1,9 @@
-library(shiny)
-library(imager)
-library(jpeg)
-library(png)
-library(shinyFiles)
-library(shinyWidgets)
-library(sendmailR)
-library(RDCOMClient)
-library(httr)
-library(digest)
-library(jsonlite)
-library(dplyr)
-library(pbapply)
+# Source script for app
 source('./app_fn.R')
+# Source script for uploading to server
 source('./jvb.R')
+# Source the password for the server
 source('./pwd.R')
-#install.packages("RDCOMClient", repos = "http://www.omegahat.net/R")
 
 # Set folder name for emails
 folderName = "Inbox"
@@ -23,20 +12,50 @@ folderName = "Inbox"
 OutApp <- COMCreate("Outlook.Application")
 outlookNameSpace = OutApp$GetNameSpace("MAPI")
 
+# Some code to search - saving for later development
+#search.phrase <- '2020-07-09'
+#search <- OutApp$AdvancedSearch(
+#  "Inbox",
+#  paste0("http://schemas.microsoft.com/mapi/proptag/0x0037001E ci_phrasematch '", search.phrase, "'")
+#)
+#results <- search[['Results']]
+#results[[1]][['Subject']]
+#results$Count()
+
 # Create list of emails
 folder <- outlookNameSpace$Folders(1)$Folders(folderName)
 emails <- folder$Items
 num_emails <- folder$Items()$Count()
 
-# Emails may not be in date order, so assign a lookup df to date order
-cat('Reading in emails\n')
-datesDF <- pblapply(1:num_emails, FUN = function(i){
-  data.frame(dates = floor(emails(i)$ReceivedTime()) + as.Date("1899-12-30"),
-             subj = emails(i)[['Subject']],
-             Sender = getSender(emails(i)))
-}) %>% bind_rows()
-datesDF$j <- 1:nrow(datesDF)
-datesDF <- datesDF %>% arrange(desc(dates))
+# Emails may not be in date order, so assign a lookup df to date order, but
+# only if computerspeed = 1 (fast) or 2 (middling)
+# This is to prevent this running on a slow computer
+computerspeed <- 2
+if(computerspeed == 1){
+  cat('Reading in emails\n')
+  datesDF <- pblapply(1:num_emails, FUN = function(i){
+    data.frame(dates = getDate(emails(i)),
+               subj = emails(i)[['Subject']],
+               Sender = getSender(emails(i)),
+               j = i)
+  }) %>% bind_rows()
+  datesDF <- datesDF %>% arrange(desc(dates))
+} else if(computerspeed == 2){
+  cat('Reading in email dates\n')
+  datesDF <- pblapply(1:num_emails, FUN = function(i){
+    data.frame(dates = getDate(emails(i)),
+               subj = '',
+               Sender = '',
+               j = i)
+  }) %>% bind_rows()
+  datesDF <- datesDF %>% arrange(desc(dates))
+} else {
+  datesDF <- data.frame(dates = '',
+                        subj = '',
+                        Sender = '',
+                        j = 1:num_emails)
+}
+
 datesDF$i <- 1:nrow(datesDF)
 datesDF$Subject <- substr(datesDF$subj,1,100)
 datesDF$Date <- as.character(datesDF$dates)
@@ -45,7 +64,7 @@ global = list(
   sender = getSender(emails(datesDF$j[1])),
   subject = emails(datesDF$j[1])[['Subject']],
   msgbody = emails(datesDF$j[1])[['Body']],
-  date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
+  date = getDate(emails(datesDF$j[1])),
   tel = '',
   location = ''
 )
@@ -57,10 +76,18 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
-      actionButton(inputId = 'aft', label = 'Previous Email'),
-      actionButton(inputId = 'fore',label = 'Next Email'),
-      actionButton(inputId = 'aft_img', label = 'Previous Image'),
-      actionButton(inputId = 'fore_img', label = 'Next Image'),
+      fluidRow(
+        column(6,
+               actionButton(inputId = 'aft', label = 'Previous Email'),
+               actionButton(inputId = 'aftten', label = 'Jump 10 Back'),
+               HTML("<br><br>"),
+               actionButton(inputId = 'aft_img', label = 'Previous Image')),
+        column(6,
+               actionButton(inputId = 'fore',label = 'Next Email'),
+               actionButton(inputId = 'foreten', label = 'Jump 10 Forwards'),
+               HTML("<br><br>"),
+               actionButton(inputId = 'fore_img', label = 'Next Image'))
+      ),
       HTML("<hr>"),
       textOutput('attachment_info'),
       HTML("<br>"),
@@ -75,11 +102,16 @@ ui <- fluidPage(
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
+      checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
+                    value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
+      textOutput('serverResponse'),
       HTML("<br><br>"),
       actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
       HTML("<hr>"),
-      dateInput(inputId = 'dateselector', label = 'Select Email Date'),
+      if(computerspeed <= 2){
+        dateInput(inputId = 'dateselector', label = 'Select Email Date')
+      },
       fluidRow(
         column(6,
                textInput(inputId = 'i', label = 'Select Index (i)',
@@ -89,7 +121,9 @@ ui <- fluidPage(
                actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'))
         ),
       HTML("<hr>"),
-      dataTableOutput(outputId = 'summaryDF')
+      if(computerspeed == 1){
+        dataTableOutput(outputId = 'summaryDF')
+      }
     ),
     
     mainPanel(
@@ -107,38 +141,41 @@ server <- function(input, output, session){
       sender = getSender(datesDF$j[1]),
       subject = emails(datesDF$j[1])[['Subject']],
       msgbody = emails(datesDF$j[1])[['Body']],
-      date = as.Date("1899-12-30") + floor(emails(datesDF$j[1])$ReceivedTime()),
+      date = getDate(emails(datesDF$j[1])),
       attachments = ifelse(emails(datesDF$j[1])[['attachments']]$Count()>0,
                            emails(datesDF$j[1])[['attachments']]$Item(1)[['DisplayName']],
                            ''),
       num_attachments = emails(datesDF$j[1])[['attachments']]$Count(),
       num_emails = num_emails,
-      img_num = 1)
+      img_num = 1,
+      includeAtt = TRUE)
   
   # Jump to selected date
   observeEvent(input$dateselector, {
-    if(any(datesDF$dates==input$dateselector)){
-      lastmatch <- which(datesDF$dates==input$dateselector) %>% tail(1)
-      values$i <- datesDF$i[lastmatch]
-    } else {
-      # We don't have an email which matches that date, so find the nearest,
-      # looking forward in time first
-      diffs <- datesDF$dates - input$dateselector
-      if(any(diffs > 0)){
-        lastmatch <- which(diffs==min(diffs[diffs > 0])) %>% tail(1)
+    if(computerspeed <= 2){
+      if(any(datesDF$dates==input$dateselector)){
+        lastmatch <- which(datesDF$dates==input$dateselector) %>% tail(1)
         values$i <- datesDF$i[lastmatch]
       } else {
-        # A time further in the future than any emails has been picked.
-        # Go to the top
-        values$i <- 1
+        # We don't have an email which matches that date, so find the nearest,
+        # looking forward in time first
+        diffs <- datesDF$dates - input$dateselector
+        if(any(diffs > 0)){
+          lastmatch <- which(diffs==min(diffs[diffs > 0])) %>% tail(1)
+          values$i <- datesDF$i[lastmatch]
+        } else {
+          # A time further in the future than any emails has been picked.
+          # Go to the top
+          values$i <- 1
+        }
       }
+      
+      # Call the wrapper function to jump to the email and get outputs
+      retList <- jumpTo(emails, values, global, datesDF, output, session)
+      output <- retList$output
+      values <- retList$values
+      global <- retList$global
     }
-    
-    # Call the wrapper function to jump to the email and get outputs
-    retList <- jumpTo(emails, values, global, datesDF, output, session)
-    output <- retList$output
-    values <- retList$values
-    global <- retList$global
   })
   
   # Jump to selected index value
@@ -148,7 +185,7 @@ server <- function(input, output, session){
     } else {
       values$i <- 1
     }
-    as.numeric(as.character('t'))
+
     # Call the wrapper function to jump to the email and get outputs
     retList <- jumpTo(emails, values, global, datesDF, output, session)
     output <- retList$output
@@ -172,6 +209,21 @@ server <- function(input, output, session){
     global <- retList$global
   })
   
+  # Going forward in time, subtract ten from the email counter (i),
+  # or loop to the end if we hit the beginning
+  observeEvent(input$foreten, {
+    values$i <- values$i - 10
+    if(values$i<0){
+      values$i <- values$i + values$num_emails
+    }
+
+    # Call the wrapper function to jump to the email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
+  })
+  
   # Going backward in time, add one to the email counter (i),
   # or loop back to the beginning if we hit the end
   observeEvent(input$aft, {
@@ -181,6 +233,21 @@ server <- function(input, output, session){
       values$i <- 1
     }
     
+    # Call the wrapper function to jump to an email and get outputs
+    retList <- jumpTo(emails, values, global, datesDF, output, session)
+    output <- retList$output
+    values <- retList$values
+    global <- retList$global
+  })
+  
+  # Going backward in time, add ten to the email counter (i),
+  # or loop back to the beginning if we hit the end
+  observeEvent(input$aftten, {
+    values$i <- values$i + 10
+    if(values$i>values$num_emails){
+        values$i <- values$i-values$num_emails
+    }
+
     # Call the wrapper function to jump to an email and get outputs
     retList <- jumpTo(emails, values, global, datesDF, output, session)
     output <- retList$output
@@ -226,9 +293,11 @@ server <- function(input, output, session){
     paste(values$msgbody)
   })
   
-  output$summaryDF <- renderDataTable({
-    (datesDF %>% select(i, Subject, Date, Sender))
-  })
+  if(computerspeed == 1){
+    output$summaryDF <- renderDataTable({
+      (datesDF %>% select(i, Subject, Date, Sender))
+    })
+  }
 
   # Send an email if this button is pressed
   observeEvent(input$send_thanksbutno, {
@@ -240,6 +309,11 @@ server <- function(input, output, session){
                ifelse(values$species=='','',paste0(', it is actually a ',values$species)),
                '.\r\n\r\nKeep up the good work.',
                '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'))
+  })
+  
+  # Turn on attachment flag if ticked
+  observeEvent(input$includeAtt,{
+    values$includeAtt <- input$includeAtt
   })
   
   global$location <- reactive ({
@@ -263,17 +337,32 @@ server <- function(input, output, session){
       global$tel <- input$tel
     }
     global$location <- input$location
+    if(values$includeAtt){
+      # Attachment images are being included in the upload.
+      #  Find out what they are and store temporary copies
+      imagelist <- getallimages(emails, values, datesDF)
+      cat('Uploading images to data warehouse\n')
+      imageStr <- pblapply(imagelist, FUN = function(img){
+        getnonce(password = password) %>%
+          postimage(imgpath = img)
+      }) %>% unlist()
+    } else {
+      imageStr <- NULL
+    }
+    cat('Uploading record to data warehouse\n')
     serverPost <- getnonce(password = password) %>%
-      postsubmission(submission = createjson(email = global$sender,
+      postsubmission(submission = createjson(imgString = imageStr,
+                                             email = global$sender,
                                              tel = global$tel,
                                              date = global$date,
                                              location = global$location,
                                              correspondance = 'test'))
-    cat(serverPost)
+    serverOut <- serverPost %>% fromJSON()
+    
+    output$serverResponse <- renderText({
+      paste0('SUCCESS! Sample ID: ',serverOut$outer_id)
+    })
   })
-  
-  
-  
 }
 
 shinyApp(ui = ui, server = server)

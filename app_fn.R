@@ -1,3 +1,19 @@
+library(shiny)
+library(imager)
+library(jpeg)
+library(png)
+library(shinyFiles)
+library(shinyWidgets)
+library(sendmailR)
+#install.packages("RDCOMClient", repos = "http://www.omegahat.net/R")
+library(RDCOMClient)
+library(httr)
+library(digest)
+library(jsonlite)
+library(dplyr)
+library(pbapply)
+library(tools)
+
 # Function to create a shiny ready jpg object from a jpg file passed
 # Function requires:
 #   attachment_file - a file created with tempfile() then with
@@ -30,7 +46,7 @@ createJPEG <- function(attachment_file, width = 400, height = 400, alt = 'image'
 # Returns: list containing the image, which the renderImage shiny function understands
 createPNG <- function(attachment_file, width = 400, height = 400, alt = 'image'){
   myPNG <- readPNG(attachment_file)
-  plot.new() 
+  plot.new()
   rasterImage(myPNG,0,0,1,1)
   dev.off()
   list(src = attachment_file,
@@ -57,6 +73,16 @@ getSender <- function(email){
   sender
 }
 
+# Function to get date from email pointer
+getDate <- function(email){
+  dateOut <- tryCatch({
+    floor(email$ReceivedTime()) + as.Date("1899-12-30")
+  }, error = function(error) {
+    return('Could not extract date')
+  })
+  dateOut
+}
+
 # Function to grab the 
 # Function requires:
 #   emails - RDCOM pointer to list of emails
@@ -74,8 +100,7 @@ extract_contents <- function(emails, values, global, datesDF){
   values$sender <- global$sender <- getSender(emails(datesDF$j[values$i]))
   values$subject <- global$subject <- emails(datesDF$j[values$i])[['Subject']]
   values$msgbody <- global$msgbody <- emails(datesDF$j[values$i])[['Body']]
-  values$date <- global$date <-
-    as.Date("1899-12-30") + floor(emails(datesDF$j[values$i])$ReceivedTime())
+  values$date <- global$date <- getDate(emails(datesDF$j[values$i]))
   list(values = values, global = global)
 }
 
@@ -139,6 +164,36 @@ format_attachments <- function(emails, values, output, datesDF){
     })
   }
   list(output = output, values = values)
+}
+
+# Function getallimages.  Takes an email with attachments and stores them
+#  locally in order to upload them to the data warehouse.  It will only do
+#  this with attachments ending in .jpg, .jpeg, .png and .bmp
+# Function requires:
+#   emails - RDCOM pointer to list of emails
+#   values - shiny reactive values list
+#   datesDF - dataframe of dates so emails come out in order
+# Function returns:
+#   a vector of the absolute locations of the files
+getallimages <- function(emails, values, datesDF){
+  attach_obj <- emails(datesDF$j[values$i])[['attachments']]
+  imagelist <- NULL
+  if(attach_obj$Count()>0){
+    imagelist <- lapply(1:attach_obj$Count(), FUN = function(k){
+      dispName <- attach_obj$Item(k)[['DisplayName']]
+      if(grepl('jpg$|png$|bmp$|jpeg$',dispName)){
+        attachment_file <- tempfile()
+        attach_obj$Item(k)$SaveAsFile(attachment_file)
+        newName <- file.path(dirname(attachment_file),
+                             dispName)
+        file.rename(attachment_file,newName)
+        return(newName)
+      } else {
+        return(NULL)
+      }
+    }) %>% unlist()
+  }
+  imagelist
 }
 
 # General wrapper function to jump to email i

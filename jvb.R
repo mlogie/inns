@@ -2,7 +2,7 @@
 #library(digest)
 #library(jsonlite)
 #library(dplyr)
-# Function to get securit nonce and authentication token
+# Function to get security nonce and authentication token
 # Takes:
 #   URLnonce: set to the dev warehouse url for now
 #   password: user password
@@ -52,7 +52,9 @@ postimage <- function(URLauth, imgpath){
 
 # Function to take some parameters and turn it into a valid json format
 # Takes:
-#   imgString: the image string returned from function postimage
+#   imgString: the image string returned from function postimage. This can
+#              be a character class of a vector or list of image strings.
+#              Each one passed will be added to the occurrence.
 #   email: email address of the source
 #   tel: telephone number of the source
 #   experience: placeholder for now as I can't work out how to get this
