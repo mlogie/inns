@@ -242,3 +242,40 @@ send_email <- function(OutApp, values, reply){
   outMail$Send()
   values
 }
+
+# Function to take an outlook Name Space and return the full list of folders
+find_folders <- function(outlookNameSpace){
+  numNames <- outlookNameSpace$Folders()$Count()
+  foldersDF <- lapply(1:numNames, FUN = function(i){
+    userName <- outlookNameSpace$Folders(i)$Name()
+    numFolders <- outlookNameSpace$Folders(i)$Folders()$Count()
+    if(numFolders > 0){
+      folders <- lapply(1:numFolders, FUN = function(j){
+        folderName <- outlookNameSpace$Folders(i)$Folders(j)$Name()
+        numSubFolders <- outlookNameSpace$Folders(i)$Folders(j)$Folders()$Count()
+        if(numSubFolders > 0){
+          folderDF <- lapply(1:numSubFolders, FUN = function(k){
+            subFolderName <- outlookNameSpace$Folders(i)$Folders(j)$Folders(k)$Name()
+            numSubSub <- outlookNameSpace$Folders(i)$Folders(j)$Folders(k)$Folders()$Count()
+            data.frame(i = i, j = j, k = k,
+                       numSubSub = numSubSub,
+                       subFolderName = subFolderName)
+          }) %>% bind_rows()
+        } else {
+          folderDF <- data.frame(i = i, j = j, k = NA,
+                                 numSubSub = NA,
+                                 subFolderName = NA)
+        }
+        folderDF$folderName <- folderName
+        folderDF
+      }) %>% bind_rows()
+    } else {
+      folders <- data.frame(i = i, j = NA, k = NA,
+                            numSubSub = NA,
+                            subFolderName = NA, folderName = NA)
+    }
+    folders$userName <- userName
+    folders
+  }) %>% bind_rows()
+  foldersDF
+}
