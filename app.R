@@ -66,7 +66,9 @@ global = list(
   msgbody = emails(datesDF$j[1])[['Body']],
   date = getDate(emails(datesDF$j[1])),
   tel = '',
-  location = ''
+  location = '',
+  comment = '',
+  correspondance = ''
 )
 
 # Define the UI
@@ -102,6 +104,9 @@ ui <- fluidPage(
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
+      textInput(inputId = 'comment', label = 'Comment', value = ''),
+      textInput(inputId = 'correspondance', label = 'Correspondence',
+                value = ''),
       checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
@@ -316,14 +321,6 @@ server <- function(input, output, session){
     values$includeAtt <- input$includeAtt
   })
   
-  global$location <- reactive ({
-    input$location
-  })
-  
-  global$tel <- reactive ({
-    input$tel
-  })
-  
   # Upload the record to Indicia
   observeEvent(input$upload_Indicia, {
       # json_sample <- getnonce(password = PASSWORD) %>%
@@ -337,30 +334,39 @@ server <- function(input, output, session){
       global$tel <- input$tel
     }
     global$location <- input$location
+    global$correspondance <- input$correspondance
+    global$comment <- input$comment
+    imageStr <- NULL
     if(values$includeAtt){
       # Attachment images are being included in the upload.
       #  Find out what they are and store temporary copies
       imagelist <- getallimages(emails, values, datesDF)
-      cat('Uploading images to data warehouse\n')
-      imageStr <- pblapply(imagelist, FUN = function(img){
-        getnonce(password = password) %>%
-          postimage(imgpath = img)
-      }) %>% unlist()
-    } else {
-      imageStr <- NULL
+      if(!is.null(imagelist)){
+        cat('\nUploading images to data warehouse\n')
+        imageStr <- pblapply(imagelist, FUN = function(img){
+          getnonce(password = password) %>%
+            postimage(imgpath = img)
+        }) %>% unlist()
+      }
     }
-    cat('Uploading record to data warehouse\n')
+    cat('\nUploading record to data warehouse\n')
     serverPost <- getnonce(password = password) %>%
       postsubmission(submission = createjson(imgString = imageStr,
                                              email = global$sender,
                                              tel = global$tel,
                                              date = global$date,
                                              location = global$location,
-                                             correspondance = 'test'))
+                                             comment = global$comment,
+                                             correspondance = global$correspondance))
     serverOut <- serverPost %>% fromJSON()
+    cat('Done\n')
     
     output$serverResponse <- renderText({
-      paste0('SUCCESS! Sample ID: ',serverOut$outer_id)
+      paste0('SUCCESS! ',
+             'Sample ID: ',serverOut$outer_id,
+             ', Occurrence ID: ',
+             serverOut$struct$children %>%
+               filter(model == 'occurrence') %>% pull(id))
     })
   })
 }

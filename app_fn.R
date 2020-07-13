@@ -150,11 +150,15 @@ format_attachments <- function(emails, values, output, datesDF){
       output$myImage <- renderImage({
         createPNG('www/unknown_format.png', height = 100, width = 250)
       }, deleteFile = FALSE)
-      
+      dispName <- attach_obj$Item(values$img_num)[['DisplayName']]
+      newName <- file.path(dirname(attachment_file),
+                           dispName)
+      file.rename(attachment_file,newName)
       output$attachment_info <- renderText({
-        paste0('Unknown image format for attachment: ',
+        paste0('Unknown format for attachment: ',
                values$attachments,', ',
-               values$img_num,' of ',values$num_attachments)
+               values$img_num,' of ',values$num_attachments,
+               '.\nFile saved here:',newName)
       })
     }
   } else {

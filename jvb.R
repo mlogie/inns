@@ -64,7 +64,8 @@ postimage <- function(URLauth, imgpath){
 # Returns: nicely formatted json
 createjson <- function(imgString = NULL, email = NULL,
                        tel = NULL, date = NULL, location = 'SU990887',
-                       experience = 1, correspondance = ''){
+                       experience = 1, correspondance = '',
+                       comment = ''){
   #  "smpAttr:1304":{"value":"Enter recorder experience"}
   recExp <- c('General nature recording',
               'Entomology',
@@ -75,10 +76,9 @@ createjson <- function(imgString = NULL, email = NULL,
                  survey_id = list(value = "500"),
                  entered_sref = list(value = location),
                  entered_sref_system = list(value = "OSGB"),
-                 comment = list(value = "This is an example record"),
+                 comment = list(value = comment),
                  `smpAttr:1140` = list(value = "This is the admin comment"),
-                 `smpAttr:43` = list(value = "TRUE"),
-                 `smpAttr:1141` = list(value = "test"))
+                 `smpAttr:43` = list(value = "TRUE"))
   if(!is.null(tel)){
     fields$`smpAttr:20` = list(value = tel)
   }
@@ -88,10 +88,13 @@ createjson <- function(imgString = NULL, email = NULL,
   if(!is.null(date)){
     fields$date = list(value = date)
   }
+  if(!is.null(correspondance)){
+    fields$`smpAttr:1141` = list(value = correspondance)
+  }
 
   # Create the occurrence fields
   occ_fields <- list(zero_abundance = list(value = "f"),
-                     taxa_taxon_list_id = list(value = "34"), #289248
+                     taxa_taxon_list_id = list(value = "289248"),
                      website_id = list(value = "109"),
                      record_status = list(value = "C"))
   occurrence <- list(list(fkId = "sample_id",
@@ -111,7 +114,7 @@ createjson <- function(imgString = NULL, email = NULL,
     occurrence[[1]]$model$subModels <- media
   }
   
-  outjson <- list(id = "sample", fields = fields, submodels = occurrence) %>%
+  outjson <- list(id = "sample", fields = fields, subModels = occurrence) %>%
     toJSON(auto_unbox = TRUE)
   
   return(outjson)
