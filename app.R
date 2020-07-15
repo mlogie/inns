@@ -112,6 +112,9 @@ ui <- fluidPage(
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
       textOutput('serverResponse'),
       HTML("<br><br>"),
+      textInput(inputId = 'recipient', label = 'Recipient',
+                placeholder = 'email address to send reply to'),
+      textOutput('sendemail'),
       actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
       HTML("<hr>"),
       if(computerspeed <= 2){
@@ -306,16 +309,27 @@ server <- function(input, output, session){
 
   # Send an email if this button is pressed
   observeEvent(input$send_thanksbutno, {
-    values <-
-      send_email(OutApp,
-                 values,
-                 reply =
-        paste0('\r\n\r\nThis is not an Asian Hornet',
-               ifelse(values$species=='','',paste0(', it is actually a ',values$species)),
-               '.\r\n\r\nKeep up the good work.',
-               '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'))
+    if(!grepl(pattern = "^[[:alnum:].-_]+@[[:alnum:].-]+$",
+              x = input$recipient)){
+      output$sendemail <- renderText({
+        paste0('Please enter a valid email address and try again')
+      })
+    } else {
+      values <-
+        send_email(OutApp = OutApp,
+                   values = values,
+                   reply =
+          paste0('\r\n\r\nThis is not an Asian Hornet',
+                 ifelse(values$species=='','',paste0(', it is actually a ',values$species)),
+                 '.\r\n\r\nKeep up the good work.',
+                 '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'),
+                   recipient = input$recipient)
+      output$sendemail <- renderText({
+        paste0('Email sent')
+      })
+    }
   })
-  
+
   # Turn on attachment flag if ticked
   observeEvent(input$includeAtt,{
     values$includeAtt <- input$includeAtt

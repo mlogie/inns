@@ -236,10 +236,10 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
 #   values
 # This function currently does not change the values list, but it is passed back to
 # caller in case changes are required in the future
-send_email <- function(OutApp, values, reply){
+send_email <- function(OutApp, values, reply, recipient){
   # create an email 
   outMail = OutApp$CreateItem(0)
-  outMail[["To"]] = "marlog@ceh.ac.uk"
+  outMail[["To"]] = recipient
   outMail[["subject"]] = paste0('Re:',values$subject)
   outMail[["body"]] = paste0('Thank you for your email ',values$sender,reply)
   ### send it                     
