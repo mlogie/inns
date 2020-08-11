@@ -6,6 +6,7 @@ source('./jvb.R')
 source('./pwd.R')
 
 # Set folder name for emails
+userName = "alert_nonnative@ceh.ac.uk"
 folderName = "Inbox"
 
 ## create outlook object
@@ -23,14 +24,14 @@ outlookNameSpace = OutApp$GetNameSpace("MAPI")
 #results$Count()
 
 # Create list of emails
-folder <- outlookNameSpace$Folders(1)$Folders(folderName)
+folder <- outlookNameSpace$Folders(userName)$Folders(folderName)
 emails <- folder$Items
 num_emails <- folder$Items()$Count()
 
 # Emails may not be in date order, so assign a lookup df to date order, but
 # only if computerspeed = 1 (fast) or 2 (middling)
 # This is to prevent this running on a slow computer
-computerspeed <- 2
+computerspeed <- 1
 if(computerspeed == 1){
   cat('Reading in emails\n')
   datesDF <- pblapply(1:num_emails, FUN = function(i){
