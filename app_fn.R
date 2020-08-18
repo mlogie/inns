@@ -13,6 +13,8 @@ library(jsonlite)
 library(dplyr)
 library(pbapply)
 library(tools)
+library(tm)
+library(geonames)
 
 # Function to create a shiny ready jpg object from a jpg file passed
 # Function requires:
@@ -215,12 +217,22 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   return_list <- format_attachments(emails, values, output, datesDF)
   updateTextInput(session, inputId = 'sender', label = 'Sender',
                   value = global$sender)
+  updateTextInput(session, inputId = 'name', label = 'Name',
+                  placeholder = 'name of sender')
+  updateTextInput(session, inputId = 'recipient', label = 'Recipient',
+                  value = global$sender)
+  updateTextInput(session, inputId = 'comment', label = 'Comment', value = '')
   updateTextInput(session, inputId = 'subject', label = 'Subject',
                   value = global$subject)
+  updateTextAreaInput(session, inputId = 'correspondance',
+                      label = 'Correspondence', value = global$msgbody)
   updateTextInput(session, inputId = 'date', label = 'Date',
                   value = as.character(global$date))
   updateTextInput(session, inputId = 'i', label = 'Select Index (i)',
                   value = as.character(values$i))
+  output$geotable <- renderDataTable({
+    NULL
+  })
   list(output = return_list$output,
        values = return_list$values,
        global = global)
@@ -236,13 +248,13 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
 #   values
 # This function currently does not change the values list, but it is passed back to
 # caller in case changes are required in the future
-send_email <- function(OutApp, values, reply, recipient){
+send_email <- function(OutApp, values, reply, recipient, msgBody, subject){
   # create an email 
   outMail = OutApp$CreateItem(0)
   outMail[["To"]] = recipient
-  outMail[["subject"]] = paste0('Re:',values$subject)
-  outMail[["body"]] = paste0('Thank you for your email ',values$sender,reply)
-  ### send it                     
+  outMail[["subject"]] = subject
+  outMail[["body"]] = msgBody
+  ### send it
   outMail$Send()
   values
 }
@@ -283,3 +295,49 @@ find_folders <- function(outlookNameSpace){
   }) %>% bind_rows()
   foldersDF
 }
+
+geoparse <- function(text){
+  cat('Geoparsing text\n')
+  # Take text and split by words
+  textl <- strsplit(text,split = ' ') %>% unlist()
+  textl <- textl[!duplicated(textl)]
+  # Try to find words in geonames
+  results <- pblapply(textl, FUN = function(l){
+    if(!(tolower(l) %in% stopwords('en'))){
+      output <- geonames::GNsearch(name = l)
+      output <- output[output$countryName == 'United Kingdom',]
+      if(nrow(output)>0){
+        output
+      } else {
+        NULL
+      }
+    } else {
+      NULL
+    }
+  }) %>% bind_rows()
+  
+  # Subset the output columns
+  results <- results %>% select('lat','lng','toponymName')
+  names(results) <- c('lat','lng','name')
+  # Often generic words like 'Railway' will have erroneous matches
+  #  Therefore drop all names which don't start with a word.
+  #  e.g. Railway might match 'Oxenholme Lake District Railway Station', but
+  #  this will drop this record if the word 'Oxenholme' isn't actually in the
+  #  text
+  keep <- lapply(results$name, FUN = function(tn){
+    tnl <- strsplit(tn,split = ' ') %>% unlist()
+    tnl[1] %in% textl
+  }) %>% unlist()
+  
+  results[keep,]
+}
+
+# Some code to search - saving for later development
+#search.phrase <- '2020-07-09'
+#search <- OutApp$AdvancedSearch(
+#  "Inbox",
+#  paste0("http://schemas.microsoft.com/mapi/proptag/0x0037001E ci_phrasematch '", search.phrase, "'")
+#)
+#results <- search[['Results']]
+#results[[1]][['Subject']]
+#results$Count()

@@ -6,22 +6,11 @@ source('./jvb.R')
 source('./pwd.R')
 
 # Set folder name for emails
-userName = "alert_nonnative@ceh.ac.uk"
 folderName = "Inbox"
 
 ## create outlook object
 OutApp <- COMCreate("Outlook.Application")
 outlookNameSpace = OutApp$GetNameSpace("MAPI")
-
-# Some code to search - saving for later development
-#search.phrase <- '2020-07-09'
-#search <- OutApp$AdvancedSearch(
-#  "Inbox",
-#  paste0("http://schemas.microsoft.com/mapi/proptag/0x0037001E ci_phrasematch '", search.phrase, "'")
-#)
-#results <- search[['Results']]
-#results[[1]][['Subject']]
-#results$Count()
 
 # Create list of emails
 folder <- outlookNameSpace$Folders(userName)$Folders(folderName)
@@ -31,7 +20,7 @@ num_emails <- folder$Items()$Count()
 # Emails may not be in date order, so assign a lookup df to date order, but
 # only if computerspeed = 1 (fast) or 2 (middling)
 # This is to prevent this running on a slow computer
-computerspeed <- 1
+computerspeed <- 2
 if(computerspeed == 1){
   cat('Reading in emails\n')
   datesDF <- pblapply(1:num_emails, FUN = function(i){
@@ -69,7 +58,11 @@ global = list(
   tel = '',
   location = '',
   comment = '',
-  correspondance = ''
+  correspondance = '',
+  body = paste0('This is not an Asian Hornet.',
+                '\r\n\r\nKeep up the good work.',
+                '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'),
+  geoparsed = data.frame()
 )
 
 # Define the UI
@@ -96,27 +89,43 @@ ui <- fluidPage(
       HTML("<br>"),
       textInput(inputId = 'sender', label = 'Sender',
                 value = global$sender),
+      textInput(inputId = 'name', label = 'Name',
+                placeholder = 'name of sender'),
       textInput(inputId = 'subject', label = 'Subject',
                 value = global$subject),
       textInput(inputId = 'date', label = 'Date',
                 value = as.character(global$date)),
-      textInput(inputId = 'species', label = 'Species',
-                value = 'Vespa velutina'),
+      selectInput(inputId = 'species', label = 'Species',
+                choices = c('Vespa velutina',''),
+                selected = 'Vespa velutina'),
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
       textInput(inputId = 'comment', label = 'Comment', value = ''),
-      textInput(inputId = 'correspondance', label = 'Correspondence',
-                value = ''),
+      textAreaInput(inputId = 'correspondance', label = 'Correspondence',
+                    height = '100px', value = global$msgbody),
       checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
       textOutput('serverResponse'),
-      HTML("<br><br>"),
+      HTML("<hr>"),
+      fluidRow(
+        column(6,
+               actionButton(inputId = 'geoparse', label = 'Attempt to Geoparse')),
+        column(6,
+               actionButton(inputId = 'cleargeoparse', 'Clear Table'))),
+      dataTableOutput(outputId = 'geotable'),
+      HTML("<hr>"),
       textInput(inputId = 'recipient', label = 'Recipient',
-                placeholder = 'email address to send reply to'),
+                value = global$sender),
+      textInput(inputId = 'subject_reply', label = 'Subject',
+                value = global$subject),
+      textAreaInput(inputId = 'email_text',height = '100px',
+                    label = 'Message Body', value = global$body),
       textOutput('sendemail'),
       actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
+      checkboxInput(inputId = 'emailOn', label = 'Turn on Email Function',
+                    value = FALSE),
       HTML("<hr>"),
       if(computerspeed <= 2){
         dateInput(inputId = 'dateselector', label = 'Select Email Date')
@@ -308,25 +317,44 @@ server <- function(input, output, session){
     })
   }
 
+  # Attempt to geoparse
+  observeEvent(input$geoparse, {
+    global$geoparsed <- geoparse(values$msgbody)
+    output$geotable <- renderDataTable({
+      global$geoparsed
+    })
+  })
+  
+  observeEvent(input$cleargeoparse, {
+    global$geoparsed <- data.frame()
+    output$geotable <- renderDataTable({
+      global$geoparsed
+    })
+  })
+  
   # Send an email if this button is pressed
   observeEvent(input$send_thanksbutno, {
-    if(!grepl(pattern = "^[[:alnum:].-_]+@[[:alnum:].-]+$",
-              x = input$recipient)){
-      output$sendemail <- renderText({
-        paste0('Please enter a valid email address and try again')
-      })
+    if(input$emailOn){
+      if(!grepl(pattern = "^[[:alnum:].-_]+@[[:alnum:].-]+$",
+                x = input$recipient)){
+        output$sendemail <- renderText({
+          paste0('Please enter a valid email address and try again')
+        })
+      } else {
+        values <-
+          send_email(OutApp = OutApp,
+                     values = values,
+                     reply = input$email_text,
+                     recipient = input$recipient,
+                     msgBody = input$email_text,
+                     subject = input$subject_reply)
+        output$sendemail <- renderText({
+          paste0('Email sent')
+        })
+      }
     } else {
-      values <-
-        send_email(OutApp = OutApp,
-                   values = values,
-                   reply =
-          paste0('\r\n\r\nThis is not an Asian Hornet',
-                 ifelse(values$species=='','',paste0(', it is actually a ',values$species)),
-                 '.\r\n\r\nKeep up the good work.',
-                 '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'),
-                   recipient = input$recipient)
       output$sendemail <- renderText({
-        paste0('Email sent')
+        paste0('Email not sent - please check the \'Turn on Email Function\' button')
       })
     }
   })
