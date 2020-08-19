@@ -218,12 +218,14 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   updateTextInput(session, inputId = 'sender', label = 'Sender',
                   value = global$sender)
   updateTextInput(session, inputId = 'name', label = 'Name',
-                  placeholder = 'name of sender')
+                  placeholder = 'sender name')
   updateTextInput(session, inputId = 'recipient', label = 'Recipient',
                   value = global$sender)
   updateTextInput(session, inputId = 'comment', label = 'Comment', value = '')
   updateTextInput(session, inputId = 'subject', label = 'Subject',
                   value = global$subject)
+  updateTextInput(session, inputId = 'subject_reply', label = 'Subject',
+                  value = paste('Re:',global$subject))
   updateTextAreaInput(session, inputId = 'correspondance',
                       label = 'Correspondence', value = global$msgbody)
   updateTextInput(session, inputId = 'date', label = 'Date',
@@ -296,40 +298,36 @@ find_folders <- function(outlookNameSpace){
   foldersDF
 }
 
-geoparse <- function(text){
-  cat('Geoparsing text\n')
-  # Take text and split by words
-  textl <- strsplit(text,split = ' ') %>% unlist()
-  textl <- textl[!duplicated(textl)]
-  # Try to find words in geonames
-  results <- pblapply(textl, FUN = function(l){
-    if(!(tolower(l) %in% stopwords('en'))){
-      output <- geonames::GNsearch(name = l)
-      output <- output[output$countryName == 'United Kingdom',]
-      if(nrow(output)>0){
-        output
-      } else {
-        NULL
-      }
+geoparse <- function(textl, l){
+  output <- tryCatch({
+    op <- geonames::GNsearch(name = textl[l])
+    op <- op[op$countryName == 'United Kingdom',]
+    if(nrow(op)>0){
+      op <- op %>% select('lat','lng','toponymName')
+      tf <- lapply(op$toponymName, FUN = function(namep){
+        tnl <- strsplit(namep,split = ' ') %>% unlist()
+        tnl[1] == textl[l]
+      }) %>% unlist()
+      op <- op[tf,]
+      return(op)
     } else {
-      NULL
+      return(NULL)
     }
-  }) %>% bind_rows()
-  
-  # Subset the output columns
-  results <- results %>% select('lat','lng','toponymName')
-  names(results) <- c('lat','lng','name')
-  # Often generic words like 'Railway' will have erroneous matches
-  #  Therefore drop all names which don't start with a word.
-  #  e.g. Railway might match 'Oxenholme Lake District Railway Station', but
-  #  this will drop this record if the word 'Oxenholme' isn't actually in the
-  #  text
-  keep <- lapply(results$name, FUN = function(tn){
-    tnl <- strsplit(tn,split = ' ') %>% unlist()
-    tnl[1] %in% textl
-  }) %>% unlist()
-  
-  results[keep,]
+  }, error = function(e){
+    return(NULL)
+  })
+}
+
+getPage <- function(URLgeo) {
+  return((browseURL(URLgeo)))
+}
+
+getPage2 <- function(URLgeo) {
+  return((HTML(readLines(URLgeo))))
+}
+
+getPage4 <- function(URLgeo) {
+  return(tags$script(HTML(httr::content(GET(URLgeo), 'text'))))
 }
 
 # Some code to search - saving for later development

@@ -87,23 +87,34 @@ ui <- fluidPage(
       HTML("<hr>"),
       textOutput('attachment_info'),
       HTML("<br>"),
-      textInput(inputId = 'sender', label = 'Sender',
-                value = global$sender),
-      textInput(inputId = 'name', label = 'Name',
-                placeholder = 'name of sender'),
+      fluidRow(column(7,textInput(inputId = 'sender', label = 'Sender',
+                                  value = global$sender)),
+               column(5,textInput(inputId = 'name', label = 'Name',
+                                  placeholder = 'sender name'))),
       textInput(inputId = 'subject', label = 'Subject',
                 value = global$subject),
-      textInput(inputId = 'date', label = 'Date',
-                value = as.character(global$date)),
-      selectInput(inputId = 'species', label = 'Species',
-                choices = c('Vespa velutina',''),
-                selected = 'Vespa velutina'),
+      fluidRow(column(5,
+                      textInput(inputId = 'date', label = 'Date',
+                                value = as.character(global$date))),
+               column(7,
+                      selectInput(inputId = 'species', label = 'Species',
+                                  choices = c('Vespa velutina',''),
+                                  selected = 'Vespa velutina'))),
       textInput(inputId = 'location', label = 'Location',
                 placeholder = 'gridref of observation'),
+      fluidRow(
+        column(6,
+               actionButton(inputId='launchBrowser',label='GridRef Finder')),
+        column(6,
+               actionButton(inputId='launchBrowser2',label='GAGR'))),
+      HTML("<br><br>"),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
       textInput(inputId = 'comment', label = 'Comment', value = ''),
       textAreaInput(inputId = 'correspondance', label = 'Correspondence',
                     height = '100px', value = global$msgbody),
+      selectInput(inputId = 'expert', label = 'Expert Knowledge?',
+                  choices = c('Expert','None'),
+                  selected = 'None'),
       checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
@@ -146,7 +157,8 @@ ui <- fluidPage(
     
     mainPanel(
       imageOutput('myImage'),
-      verbatimTextOutput('msgbody')
+      verbatimTextOutput('msgbody'),
+      htmlOutput("inc")
     )
   )
 )
@@ -319,8 +331,42 @@ server <- function(input, output, session){
 
   # Attempt to geoparse
   observeEvent(input$geoparse, {
-    global$geoparsed <- geoparse(values$msgbody)
     output$geotable <- renderDataTable({
+      withProgress(message = 'Working', value = 0, {
+        # Take text and split by words
+        cat(values$msgbody,'\n')
+        textl <- strsplit(values$msgbody,split = ' ') %>% unlist()
+        textl <- textl[!duplicated(textl)]
+        textl <- textl[!(textl %in% stopwords('en'))]
+        # Try to find words in geonames
+        results <- lapply(1:length(textl), FUN = function(l){
+          incProgress(1/length(textl))
+          geoparse(textl, l)
+          #output <- tryCatch({
+          #  op <- geonames::GNsearch(name = textl[l])
+          #  op <- op[op$countryName == 'United Kingdom',]
+          #  if(nrow(op)>0){
+          #    return(op)
+          #  } else {
+          #    return(NULL)
+          #  }
+          #}, error = function(e){
+          #  return(NULL)
+          #})
+        }) %>% bind_rows()
+        
+        names(results) <- c('lat','lng','name')
+        # Often generic words like 'Railway' will have erroneous matches
+        #  Therefore drop all names which don't start with a word in the text.
+        #  e.g. Railway might match 'Oxenholme Lake District Railway Station', but
+        #  this will drop this record if the word 'Oxenholme' isn't actually in the
+        #  text
+        #keep <- lapply(results$name, FUN = function(tn){
+        #  tnl <- strsplit(tn,split = ' ') %>% unlist()
+        #  tnl[1] %in% textl
+        #}) %>% unlist()
+      })
+      global$geoparsed <- results#[keep,]
       global$geoparsed
     })
   })
@@ -364,6 +410,18 @@ server <- function(input, output, session){
     values$includeAtt <- input$includeAtt
   })
   
+  observeEvent(input$launchBrowser,{
+    output$inc <- renderUI({
+      getPage('https://gridreferencefinder.com/')
+    })
+  })
+  
+  observeEvent(input$launchBrowser2,{
+    output$inc <- renderUI({
+      getPage('https://www.bnhs.co.uk/2019/technology/grabagridref/gagrol.php#map')
+    })
+  })
+
   # Upload the record to Indicia
   observeEvent(input$upload_Indicia, {
       # json_sample <- getnonce(password = PASSWORD) %>%
