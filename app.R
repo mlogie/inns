@@ -5,6 +5,9 @@ source('./jvb.R')
 # Source the password for the server
 source('./pwd.R')
 
+# Address for devwarehouse
+#https://devwarehouse.indicia.org.uk/index.php/survey/edit/500
+
 # Set folder name for emails
 folderName = "Inbox"
 
@@ -75,18 +78,19 @@ ui <- fluidPage(
       fluidRow(
         column(6,
                actionButton(inputId = 'aft', label = 'Previous Email'),
-               actionButton(inputId = 'aftten', label = 'Jump 10 Back'),
+               actionButton(inputId = 'aftten', label = '10 Back'),
                HTML("<br><br>"),
                actionButton(inputId = 'aft_img', label = 'Previous Image')),
         column(6,
                actionButton(inputId = 'fore',label = 'Next Email'),
-               actionButton(inputId = 'foreten', label = 'Jump 10 Forwards'),
+               actionButton(inputId = 'foreten', label = '10 Forwards'),
                HTML("<br><br>"),
                actionButton(inputId = 'fore_img', label = 'Next Image'))
       ),
       HTML("<hr>"),
       textOutput('attachment_info'),
       HTML("<br>"),
+      titlePanel('Data Upload Fields'),
       fluidRow(column(7,textInput(inputId = 'sender', label = 'Sender',
                                   value = global$sender)),
                column(5,textInput(inputId = 'name', label = 'Name',
@@ -107,7 +111,14 @@ ui <- fluidPage(
                actionButton(inputId='launchBrowser',label='GridRef Finder')),
         column(6,
                actionButton(inputId='launchBrowser2',label='GAGR'))),
-      HTML("<br><br>"),
+      HTML("<hr>"),
+      fluidRow(
+        column(6,
+               actionButton(inputId = 'geoparse', label = 'Attempt to Geoparse')),
+        column(6,
+               actionButton(inputId = 'cleargeoparse', 'Clear Table'))),
+      dataTableOutput(outputId = 'geotable'),
+      HTML("<hr>"),
       textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
       textInput(inputId = 'comment', label = 'Comment', value = ''),
       textAreaInput(inputId = 'correspondance', label = 'Correspondence',
@@ -120,13 +131,7 @@ ui <- fluidPage(
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
       textOutput('serverResponse'),
       HTML("<hr>"),
-      fluidRow(
-        column(6,
-               actionButton(inputId = 'geoparse', label = 'Attempt to Geoparse')),
-        column(6,
-               actionButton(inputId = 'cleargeoparse', 'Clear Table'))),
-      dataTableOutput(outputId = 'geotable'),
-      HTML("<hr>"),
+      titlePanel('Email Response Fields'),
       textInput(inputId = 'recipient', label = 'Recipient',
                 value = global$sender),
       textInput(inputId = 'subject_reply', label = 'Subject',
@@ -138,6 +143,7 @@ ui <- fluidPage(
       checkboxInput(inputId = 'emailOn', label = 'Turn on Email Function',
                     value = FALSE),
       HTML("<hr>"),
+      titlePanel('Email Selector'),
       if(computerspeed <= 2){
         dateInput(inputId = 'dateselector', label = 'Select Email Date')
       },
@@ -332,41 +338,26 @@ server <- function(input, output, session){
   # Attempt to geoparse
   observeEvent(input$geoparse, {
     output$geotable <- renderDataTable({
-      withProgress(message = 'Working', value = 0, {
-        # Take text and split by words
-        cat(values$msgbody,'\n')
+      # Check if there's a postcode in the text
+      pcdf <- getpostcode(values$msgbody)
+      
+      # Geoparse text with a progress bar
+      withProgress(message = 'Geoparsing...', value = 0, {
+        # Take text and split by words, removing stopwords
+        textl <- gsub('[[:punct:] ]+',' ',values$msgbody) %>% tolower()
         textl <- strsplit(values$msgbody,split = ' ') %>% unlist()
         textl <- textl[!duplicated(textl)]
-        textl <- textl[!(textl %in% stopwords('en'))]
+        textl <- textl[!(textl %in% stopwrds)]
+        
         # Try to find words in geonames
         results <- lapply(1:length(textl), FUN = function(l){
           incProgress(1/length(textl))
           geoparse(textl, l)
-          #output <- tryCatch({
-          #  op <- geonames::GNsearch(name = textl[l])
-          #  op <- op[op$countryName == 'United Kingdom',]
-          #  if(nrow(op)>0){
-          #    return(op)
-          #  } else {
-          #    return(NULL)
-          #  }
-          #}, error = function(e){
-          #  return(NULL)
-          #})
         }) %>% bind_rows()
-        
         names(results) <- c('lat','lng','name')
-        # Often generic words like 'Railway' will have erroneous matches
-        #  Therefore drop all names which don't start with a word in the text.
-        #  e.g. Railway might match 'Oxenholme Lake District Railway Station', but
-        #  this will drop this record if the word 'Oxenholme' isn't actually in the
-        #  text
-        #keep <- lapply(results$name, FUN = function(tn){
-        #  tnl <- strsplit(tn,split = ' ') %>% unlist()
-        #  tnl[1] %in% textl
-        #}) %>% unlist()
       })
-      global$geoparsed <- results#[keep,]
+      
+      global$geoparsed <- bind_rows(pcdf, results)
       global$geoparsed
     })
   })
@@ -393,7 +384,8 @@ server <- function(input, output, session){
                      reply = input$email_text,
                      recipient = input$recipient,
                      msgBody = input$email_text,
-                     subject = input$subject_reply)
+                     subject = input$subject_reply,
+                     from = NULL)
         output$sendemail <- renderText({
           paste0('Email sent')
         })

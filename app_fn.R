@@ -15,6 +15,7 @@ library(pbapply)
 library(tools)
 library(tm)
 library(geonames)
+library(stringr)
 
 # Function to create a shiny ready jpg object from a jpg file passed
 # Function requires:
@@ -250,12 +251,16 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
 #   values
 # This function currently does not change the values list, but it is passed back to
 # caller in case changes are required in the future
-send_email <- function(OutApp, values, reply, recipient, msgBody, subject){
+send_email <- function(OutApp, values, reply, recipient, msgBody, subject,
+                       from = NULL){
   # create an email 
   outMail = OutApp$CreateItem(0)
   outMail[["To"]] = recipient
   outMail[["subject"]] = subject
   outMail[["body"]] = msgBody
+  if(!is.null(from)){
+    outMail[["SentOnBehalfOfName"]] <- from
+  }
   ### send it
   outMail$Send()
   values
@@ -298,6 +303,22 @@ find_folders <- function(outlookNameSpace){
   foldersDF
 }
 
+getpostcode <- function(txt){
+  postcode <- str_extract_all(txt, paste0(
+    '([Gg][Ii][Rr] 0[Aa]{2})|',
+    '((([A-Za-z][0-9]{1,2})|',
+    '(([A-Za-z][A-Ha-hJ-Yj-y][0-9]{1,2})|',
+    '(([A-Za-z][0-9][A-Za-z])|',
+    '([A-Za-z][A-Ha-hJ-Yj-y][0-9][A-Za-z]?)))) ?[0-9][A-Za-z]{2})')) %>%
+    unlist()
+  if(length(postcode)>0){
+    return(data.frame(lat = NA, lng = NA, name = postcode))
+  } else {
+    return(NULL)
+  }
+}
+
+stopwrds <- c(stopwords('en'), 'would')
 geoparse <- function(textl, l){
   output <- tryCatch({
     op <- geonames::GNsearch(name = textl[l])
