@@ -63,6 +63,7 @@ datesDF$Date <- as.character(datesDF$dates)
 
 global = list(
   sender = getSender(emails(datesDF$j[1])),
+  sendername = emails(datesDF$j[1])[['SenderName']],
   subject = emails(datesDF$j[1])[['Subject']],
   msgbody = emails(datesDF$j[1])[['Body']],
   date = getDate(emails(datesDF$j[1])),
@@ -70,39 +71,22 @@ global = list(
   location = '',
   comment = '',
   correspondance = '',
-  body = paste0('This is not an Asian Hornet.',
-                '\r\n\r\nKeep up the good work.',
-                '\r\n\r\nFrom GB Non-Native Species Information Portal (GB-NNSIP)'),
-  geoparsed = data.frame()
+  body = '',
+  geoparsed = data.frame(),
+  num_attachments = emails(datesDF$j[1])[['attachments']]$Count()
 )
 
 # Define the UI
 ui <- fluidPage(
   
-  titlePanel('Invasive Species Alerts Tool'),
-  
   sidebarLayout(
     sidebarPanel(
-      fluidRow(
-        column(6,
-               actionButton(inputId = 'aft', label = 'Previous Email'),
-               actionButton(inputId = 'aftten', label = '10 Back'),
-               HTML("<br><br>"),
-               actionButton(inputId = 'aft_img', label = 'Previous Image')),
-        column(6,
-               actionButton(inputId = 'fore',label = 'Next Email'),
-               actionButton(inputId = 'foreten', label = '10 Forwards'),
-               HTML("<br><br>"),
-               actionButton(inputId = 'fore_img', label = 'Next Image'))
-      ),
-      HTML("<hr>"),
-      textOutput('attachment_info'),
-      HTML("<br>"),
-      titlePanel('Data Upload Fields'),
-      fluidRow(column(7,textInput(inputId = 'sender', label = 'Sender',
+      tabsetPanel(
+    tabPanel('Upload',
+      fluidRow(column(6,textInput(inputId = 'sender', label = 'Sender',
                                   value = global$sender)),
-               column(5,textInput(inputId = 'name', label = 'Name',
-                                  placeholder = 'sender name'))),
+               column(6,textInput(inputId = 'name', label = 'Name',
+                                  value = global$sendername))),
       textInput(inputId = 'subject', label = 'Subject',
                 value = global$subject),
       fluidRow(column(5,
@@ -112,22 +96,12 @@ ui <- fluidPage(
                       selectInput(inputId = 'species', label = 'Species',
                                   choices = c('Vespa velutina',''),
                                   selected = 'Vespa velutina'))),
-      textInput(inputId = 'location', label = 'Location',
-                placeholder = 'gridref of observation'),
-      fluidRow(
-        column(6,
-               actionButton(inputId='launchBrowser',label='GridRef Finder')),
-        column(6,
-               actionButton(inputId='launchBrowser2',label='GAGR'))),
-      HTML("<hr>"),
-      fluidRow(
-        column(6,
-               actionButton(inputId = 'geoparse', label = 'Attempt to Geoparse')),
-        column(6,
-               actionButton(inputId = 'cleargeoparse', 'Clear Table'))),
-      dataTableOutput(outputId = 'geotable'),
-      HTML("<hr>"),
-      textInput(inputId = 'tel', label = 'Telephone Number', value = ''),
+      fluidRow(column(5,
+                      textInput(inputId = 'location', label = 'Location',
+                                placeholder = 'gridref of observation')),
+               column(7,
+                      textInput(inputId = 'tel', label = 'Telephone Number',
+                                value = ''))),
       textInput(inputId = 'comment', label = 'Comment', value = ''),
       textAreaInput(inputId = 'correspondance', label = 'Correspondence',
                     height = '100px', value = global$msgbody),
@@ -138,41 +112,76 @@ ui <- fluidPage(
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
       textOutput('serverResponse'),
-      HTML("<hr>"),
-      titlePanel('Email Response Fields'),
-      textInput(inputId = 'recipient', label = 'Recipient',
-                value = global$sender),
-      textInput(inputId = 'subject_reply', label = 'Subject',
-                value = global$subject),
-      textAreaInput(inputId = 'email_text',height = '100px',
-                    label = 'Message Body', value = global$body),
-      textOutput('sendemail'),
-      actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
-      checkboxInput(inputId = 'emailOn', label = 'Turn on Email Function',
-                    value = FALSE),
-      HTML("<hr>"),
-      titlePanel('Email Selector'),
-      if(computerspeed <= 2){
-        dateInput(inputId = 'dateselector', label = 'Select Email Date')
-      },
-      fluidRow(
-        column(6,
-               textInput(inputId = 'i', label = 'Select Index (i)',
-                         value = '1')),
-        column(6,
-               HTML("<br>"),
-               actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'))
-        ),
-      HTML("<hr>"),
-      if(computerspeed == 1){
-        dataTableOutput(outputId = 'summaryDF')
-      }
     ),
-    
-    mainPanel(
-      imageOutput('myImage'),
-      verbatimTextOutput('msgbody'),
-      htmlOutput("inc")
+    tabPanel('Email',
+             textInput(inputId = 'recipient', label = 'Recipient',
+                       value = global$sender),
+             textInput(inputId = 'subject_reply', label = 'Subject',
+                       value = global$subject),
+             selectInput(inputId = 'email_text_selector', label = 'Email Response',
+                         choices = c('Giant Woodwasp','Hoverfly','European Hornet'),
+                         selected = 'Giant Woodwasp'),
+             textAreaInput(inputId = 'email_text',height = '100px',
+                           label = 'Message Body', value = global$body),
+             textOutput('sendemail'),
+             actionButton(inputId = 'send_thanksbutno', label = 'Send reply'),
+             checkboxInput(inputId = 'emailOn', label = 'Turn on Email Function',
+                           value = FALSE),
+             ),
+    tabPanel('Jump',
+             if(computerspeed <= 2){
+               dateInput(inputId = 'dateselector', label = 'Select Email Date')
+             },
+             fluidRow(
+               column(6,
+                      textInput(inputId = 'i', label = 'Select Index (i)',
+                                value = '1')),
+               column(6,
+                      HTML("<br>"),
+                      actionButton(inputId = 'jumpToIndex', label = 'Jump to Index'))
+             ),
+             HTML("<hr>"),
+             if(computerspeed == 1){
+               dataTableOutput(outputId = 'summaryDF')
+             }
+             ),
+    tabPanel('Tools',
+             fluidRow(
+               column(6,
+                      actionButton(inputId='launchBrowser',label='GridRef Finder')),
+               column(6,
+                      actionButton(inputId='launchBrowser2',label='GAGR'))),
+             HTML("<hr>"),
+             fluidRow(
+               column(6,
+                      actionButton(inputId = 'geoparse', label = 'Attempt to Geoparse')),
+               column(6,
+                      actionButton(inputId = 'cleargeoparse', 'Clear Table'))),
+             dataTableOutput(outputId = 'geotable')
+             ))),
+    mainPanel(fluidRow(column(2,bsButton(inputId = 'aftten', label = '',style = 'info',
+                                         icon = icon('arrow-circle-left', 'fa-2x')) %>%
+                         myPopify(txt = 'Go back 10 emails')),
+                       column(2,bsButton(inputId = 'aft', label = '',style = 'primary',
+                                         icon = icon('arrow-left', 'fa-2x')) %>%
+                                myPopify(txt = 'Go back 1 email')),
+                       column(2,bsButton(inputId = 'aft_img', label = '',style = 'success',
+                                         icon = icon('chevron-left', 'fa-2x')) %>%
+                                myPopify(txt = 'Go back 1 attachment')),
+                       column(2,bsButton(inputId = 'fore_img', label = '',style = 'success',
+                                         icon = icon('chevron-right', 'fa-2x')) %>%
+                                myPopify(txt = 'Go forward 1 attachment')),
+                       column(2,bsButton(inputId = 'fore',label = '',style = 'primary',
+                                         icon = icon('arrow-right', 'fa-2x')) %>%
+                                myPopify(txt = 'Go forward 1 email')),
+                       column(2,bsButton(inputId = 'foreten', label = '',style = 'info',
+                                         icon = icon('arrow-circle-right', 'fa-2x')) %>%
+                                myPopify(txt = 'Go forward 10 emails'))
+                       ),
+              textOutput('attachment_info'),
+              imageOutput('myImage', height = '100%'),
+              htmlOutput('msgbody'),
+              htmlOutput("inc")
     )
   )
 )
@@ -183,6 +192,7 @@ server <- function(input, output, session){
   values <-
     reactiveValues(i = 1,
       sender = getSender(datesDF$j[1]),
+      sendername = emails(datesDF$j[1])[['SenderName']],
       subject = emails(datesDF$j[1])[['Subject']],
       msgbody = emails(datesDF$j[1])[['Body']],
       date = getDate(emails(datesDF$j[1])),
@@ -254,11 +264,10 @@ server <- function(input, output, session){
   })
   
   # Going forward in time, subtract ten from the email counter (i),
-  # or loop to the end if we hit the beginning
   observeEvent(input$foreten, {
     values$i <- values$i - 10
     if(values$i<0){
-      values$i <- values$i + values$num_emails
+      values$i <- 1
     }
 
     # Call the wrapper function to jump to the email and get outputs
@@ -285,11 +294,10 @@ server <- function(input, output, session){
   })
   
   # Going backward in time, add ten to the email counter (i),
-  # or loop back to the beginning if we hit the end
   observeEvent(input$aftten, {
     values$i <- values$i + 10
     if(values$i>values$num_emails){
-        values$i <- values$i-values$num_emails
+        values$i <- values$num_emails
     }
 
     # Call the wrapper function to jump to an email and get outputs
@@ -333,8 +341,8 @@ server <- function(input, output, session){
     }
   })
   
-  output$msgbody <- renderText({
-    paste(values$msgbody)
+  output$msgbody <- renderUI({
+    HTML(paste(str_replace_all(values$msgbody,'\\n','<br>')))
   })
   
   if(computerspeed == 1){
@@ -375,6 +383,16 @@ server <- function(input, output, session){
     output$geotable <- renderDataTable({
       global$geoparsed
     })
+  })
+  
+  observeEvent(input$email_text_selector, {
+    global$body <- switch(input$email_text_selector,
+                          'Giant Woodwasp' = woodwasp,
+                          'Hoverfly' = hoverfly,
+                          'European Hornet' = eurohornet)
+
+    updateTextAreaInput(session, inputId = 'email_text',
+                        label = 'Message Body', value = global$body)
   })
   
   # Send an email if this button is pressed

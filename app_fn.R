@@ -16,6 +16,8 @@ library(tools)
 library(tm)
 library(geonames)
 library(stringr)
+library(shinyBS)
+source('./responses.R')
 
 # Function to create a shiny ready jpg object from a jpg file passed
 # Function requires:
@@ -106,9 +108,12 @@ getDate <- function(email){
 # The email for which information extracted is the value saved as values$i
 extract_contents <- function(emails, values, global, datesDF){
   values$sender <- global$sender <- getSender(emails(datesDF$j[values$i]))
+  values$sendername <- global$sendername <- emails(datesDF$j[values$i])[['SenderName']]
   values$subject <- global$subject <- emails(datesDF$j[values$i])[['Subject']]
   values$msgbody <- global$msgbody <- emails(datesDF$j[values$i])[['Body']]
   values$date <- global$date <- getDate(emails(datesDF$j[values$i]))
+  values$num_attachments <- global$num_attachments <-
+    emails(datesDF$j[values$i])[['attachments']]$Count()
   list(values = values, global = global)
 }
 
@@ -151,7 +156,7 @@ format_attachments <- function(emails, values, output, datesDF){
       }, deleteFile = TRUE)
     } else {
       output$myImage <- renderImage({
-        createPNG('www/unknown_format.png', height = 100, width = 250)
+        createPNG('www/unknown_format.png', height = 50, width = 90)
       }, deleteFile = FALSE)
       dispName <- attach_obj$Item(values$img_num)[['DisplayName']]
       newName <- file.path(dirname(attachment_file),
@@ -168,7 +173,7 @@ format_attachments <- function(emails, values, output, datesDF){
     values$num_attachments <- 0
     values$attachments <- ''
     output$myImage <- renderImage({
-      createPNG('www/no_attachments.png', height = 100, width = 250)
+      createPNG('www/no_attachments.png', height = 50, width = 120)
     }, deleteFile = FALSE)
     
     output$attachment_info <- renderText({
@@ -219,7 +224,7 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   updateTextInput(session, inputId = 'sender', label = 'Sender',
                   value = global$sender)
   updateTextInput(session, inputId = 'name', label = 'Name',
-                  placeholder = 'sender name')
+                  value = global$sendername)
   updateTextInput(session, inputId = 'recipient', label = 'Recipient',
                   value = global$sender)
   updateTextInput(session, inputId = 'comment', label = 'Comment', value = '')
@@ -349,6 +354,11 @@ getPage2 <- function(URLgeo) {
 
 getPage4 <- function(URLgeo) {
   return(tags$script(HTML(httr::content(GET(URLgeo), 'text'))))
+}
+
+myPopify <- function(bs, txt){
+  popify(el = bs, title =  '', placement = 'bottom', content = txt,
+         trigger = 'hover',  options = list(container = 'body'))
 }
 
 # Some code to search - saving for later development
