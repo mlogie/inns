@@ -73,7 +73,8 @@ global = list(
   correspondance = '',
   body = '',
   geoparsed = data.frame(),
-  num_attachments = emails(datesDF$j[1])[['attachments']]$Count()
+  num_attachments = emails(datesDF$j[1])[['attachments']]$Count(),
+  attachment_location = 'tmp'
 )
 
 # Define the UI
@@ -179,6 +180,7 @@ ui <- fluidPage(
                                 myPopify(txt = 'Go forward 10 emails'))
                        ),
               textOutput('attachment_info'),
+              actionButton("att_open", "Open File"),
               imageOutput('myImage', height = '100%'),
               htmlOutput('msgbody'),
               htmlOutput("inc")
@@ -200,6 +202,7 @@ server <- function(input, output, session){
                            emails(datesDF$j[1])[['attachments']]$Item(1)[['DisplayName']],
                            ''),
       num_attachments = emails(datesDF$j[1])[['attachments']]$Count(),
+      attachment_location = 'tmp',
       num_emails = num_emails,
       img_num = 1,
       includeAtt = TRUE)
@@ -321,6 +324,8 @@ server <- function(input, output, session){
       return_list <- format_attachments(emails, values, output, datesDF)
       output <- return_list$output
       values <- return_list$values
+      global$attachment_location <- values$attachment_location
+      #cat(global$attachment_location,'\n')
     }
   })
   
@@ -338,6 +343,8 @@ server <- function(input, output, session){
       return_list <- format_attachments(emails, values, output, datesDF)
       output <- return_list$output
       values <- return_list$values
+      global$attachment_location <- values$attachment_location
+      #cat(global$attachment_location,'\n')
     }
   })
   
@@ -350,6 +357,12 @@ server <- function(input, output, session){
       (datesDF %>% select(i, Subject, Date, Sender))
     })
   }
+  
+  observeEvent(input$att_open, {
+    if(values$num_attachments>0){
+      shell(paste0(tmpfiles, '/', values$attachment_location))
+    }
+  })
 
   # Attempt to geoparse
   observeEvent(input$geoparse, {

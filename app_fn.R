@@ -18,6 +18,8 @@ library(geonames)
 library(stringr)
 library(shinyBS)
 source('./responses.R')
+tmpfiles <- dirname(tempfile())
+addResourcePath('tmpfiles', tmpfiles)
 
 # Function to create a shiny ready jpg object from a jpg file passed
 # Function requires:
@@ -138,7 +140,6 @@ format_attachments <- function(emails, values, output, datesDF){
   if(attach_obj$Count() > 0){
     values$attachments <- attach_obj$Item(values$img_num)[['DisplayName']]
     values$num_attachments <- attach_obj$Count()
-    
     output$attachment_info <- renderText({
       paste0('Attachment ',values$img_num,' of ',values$num_attachments,
              ': ',values$attachments)
@@ -146,22 +147,38 @@ format_attachments <- function(emails, values, output, datesDF){
     
     attachment_file <- tempfile()
     attach_obj$Item(values$img_num)$SaveAsFile(attachment_file)
+    dispName <- attach_obj$Item(values$img_num)[['DisplayName']]
+    newName  <- file.path(dirname(attachment_file),
+                          dispName)
+    file.rename(attachment_file,newName)
+    
     if(grepl('jpg$',values$attachments)){
+      img <- readJPEG(newName)
+      wh <- dim(img)
       output$myImage <- renderImage({
-        createJPEG(attachment_file)
-      }, deleteFile = TRUE)
+        createJPEG(newName, width = wh[2], height = wh[1])
+      }, deleteFile = FALSE)
+      output$attachment_info <- renderText({
+        paste0('File saved here:',newName)
+      })
+      values$attachment_location <- basename(newName)
+      
     } else if(grepl('png$',values$attachments)){
+      img <- readPNG(newName)
+      wh <- dim(img)
       output$myImage <- renderImage({
-        createPNG(attachment_file)
-      }, deleteFile = TRUE)
+        createPNG(newName, width = wh[2], height = wh[1])
+      }, deleteFile = FALSE)
+      output$attachment_info <- renderText({
+        paste0('File saved here:',newName)
+      })
+      values$attachment_location <- basename(newName)
+      
     } else {
       output$myImage <- renderImage({
         createPNG('www/unknown_format.png', height = 50, width = 90)
       }, deleteFile = FALSE)
-      dispName <- attach_obj$Item(values$img_num)[['DisplayName']]
-      newName <- file.path(dirname(attachment_file),
-                           dispName)
-      file.rename(attachment_file,newName)
+      
       output$attachment_info <- renderText({
         paste0('Unknown format for attachment: ',
                values$attachments,', ',
