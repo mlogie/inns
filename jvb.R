@@ -1,7 +1,3 @@
-#library(httr)
-#library(digest)
-#library(jsonlite)
-#library(dplyr)
 # Function to get security nonce and authentication token
 # Takes:
 #   URLnonce: set to the dev warehouse url for now
@@ -11,7 +7,7 @@ getnonce <- function(URLnonce = 'http://devwarehouse.indicia.org.uk/index.php/se
                      password){
   r <- POST(URLnonce,
             body = list(website_id = 109))
-  nonce <- content(r, 'text')
+  nonce <- httr::content(x = r, as = 'text')
   key <- paste0(nonce, ':', password)
   authtoken <- digest(key, 'sha1', serialize = FALSE)
   
@@ -33,7 +29,7 @@ postsubmission <- function(URLauth, submission){
   
   r <- httr::POST(URL,
                   body = list('submission' = I(submission)))
-  return(content(r, 'text'))
+  return(httr::content(x = r, as = 'text'))
 }
 
 # Function to post an image to the data warehouse
@@ -47,7 +43,7 @@ postimage <- function(URLauth, imgpath){
   
   res <- POST(url=URLimg,
               body=list('media_upload'=upload_file(imgpath)))
-  return(content(res, 'text'))
+  return(httr::content(x = res, as = 'text'))
 }
 
 # Function to take some parameters and turn it into a valid json format
@@ -76,8 +72,9 @@ createjson <- function(imgString = NULL, email = NULL,
                  survey_id = list(value = "500"),
                  entered_sref = list(value = location),
                  entered_sref_system = list(value = "OSGB"),
+                 location = list(value = "here"),
                  comment = list(value = comment),
-                 `smpAttr:1140` = list(value = "This is the admin comment"),
+                 `smpAttr:1140` = list(value = ""),
                  `smpAttr:43` = list(value = "TRUE"))
   if(!is.null(tel)){
     fields$`smpAttr:20` = list(value = tel)
@@ -90,6 +87,9 @@ createjson <- function(imgString = NULL, email = NULL,
   }
   if(!is.null(correspondance)){
     fields$`smpAttr:1141` = list(value = correspondance)
+  }
+  if(!is.null(experience)){
+    fields$`smpAttr:1304` = list(value = experience)
   }
 
   # Create the occurrence fields
