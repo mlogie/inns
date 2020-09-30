@@ -153,9 +153,13 @@ format_attachments <- function(emails, values, output, datesDF){
     file.rename(attachment_file,newName)
     values$attachment_location <- basename(newName)
     
-    if(grepl('jpg$',values$attachments)){
+    if(grepl('jpg$|jpeg$',tolower(values$attachments))){
       img <- readJPEG(newName)
       wh <- dim(img)
+      if(wh[1]>400){
+        wh[2] <- 400*wh[2]/wh[1]
+        wh[1] <- 400
+      }
       output$myImage <- renderImage({
         createJPEG(newName, width = wh[2], height = wh[1])
       }, deleteFile = FALSE)
@@ -163,9 +167,13 @@ format_attachments <- function(emails, values, output, datesDF){
         paste0('File saved here:',newName)
       })
       
-    } else if(grepl('png$',values$attachments)){
+    } else if(grepl('png$',tolower(values$attachments))){
       img <- readPNG(newName)
       wh <- dim(img)
+      if(wh[1]>400){
+        wh[2] <- 400*wh[2]/wh[1]
+        wh[1] <- 400
+      }
       output$myImage <- renderImage({
         createPNG(newName, width = wh[2], height = wh[1])
       }, deleteFile = FALSE)
