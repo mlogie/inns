@@ -151,6 +151,7 @@ format_attachments <- function(emails, values, output, datesDF){
     newName  <- file.path(dirname(attachment_file),
                           dispName)
     file.rename(attachment_file,newName)
+    values$attachment_location <- basename(newName)
     
     if(grepl('jpg$',values$attachments)){
       img <- readJPEG(newName)
@@ -161,7 +162,6 @@ format_attachments <- function(emails, values, output, datesDF){
       output$attachment_info <- renderText({
         paste0('File saved here:',newName)
       })
-      values$attachment_location <- basename(newName)
       
     } else if(grepl('png$',values$attachments)){
       img <- readPNG(newName)
@@ -172,7 +172,6 @@ format_attachments <- function(emails, values, output, datesDF){
       output$attachment_info <- renderText({
         paste0('File saved here:',newName)
       })
-      values$attachment_location <- basename(newName)
       
     } else {
       output$myImage <- renderImage({
@@ -183,7 +182,7 @@ format_attachments <- function(emails, values, output, datesDF){
         paste0('Unknown format for attachment: ',
                values$attachments,', ',
                values$img_num,' of ',values$num_attachments,
-               '.\nFile saved here:',newName)
+               '.\nFile saved here: ',newName)
       })
     }
   } else {
