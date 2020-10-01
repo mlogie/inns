@@ -37,7 +37,7 @@ http://www.rspb.org.uk/wildlife/wildlifegarden/atoz/h/hoverfly.aspx
 
 Could you enter the record, with photo, at https://www.brc.ac.uk/irecord/enter-casual-record? This will be very useful as a record of this native species. Only the fields marked with a red asterisk * are required. You can enter the "spatial reference" simply by clicking on the map.
 
-Thank you again for your report – such reports are extremely useful for non-native species surveillance, and they are also very valuable as records of native species. Please do report future sightings of concern by using the on-line form: 
+Thank you again for your report - such reports are extremely useful for non-native species surveillance, and they are also very valuable as records of native species. Please do report future sightings of concern by using the on-line form: 
   
 http://www.brc.ac.uk/risc/alert.php?species=asian_hornet 
 
@@ -64,7 +64,7 @@ Crowmarsh Gifford
 Wallingford
 Oxfordshire OX10 8BB'
 
-eurohornet <- 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is a native species – the European Hornet, Vespa crabro.
+eurohornet <- 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is a native species - the European Hornet, Vespa crabro.
 
 European Hornet activity tends to be most noticed in the spring, when queens start becoming active after overwintering and start searching for suitable nesting sites, and then again in late summer when colonies start to disperse searching for food etc - at this time of year they are often seen during the night as well as the day as they are attracted to light in moderate numbers.
 
@@ -79,7 +79,7 @@ If you have a smart phone or tablet / iPad, you can also use the Asian Hornet Wa
 https://play.google.com/store/apps/details?id=uk.ac.ceh.hornets 
 https://itunes.apple.com/gb/app/asian-hornet-watch/id1161238813
 
-Thank you again for your report – such reports are extremely useful for non-native species surveillance. Please do report future sightings of concern by using the on-line form or app.
+Thank you again for your report - such reports are extremely useful for non-native species surveillance. Please do report future sightings of concern by using the on-line form or app.
 
 For detailed information and help on identification of the Asian Hornet please also see the following factsheets:
 

@@ -61,7 +61,7 @@ datesDF$i <- 1:nrow(datesDF)
 datesDF$Subject <- substr(datesDF$subj,1,100)
 datesDF$Date <- as.character(datesDF$dates)
 
-global = list(
+global <- list(
   sender = getSender(emails(datesDF$j[1])),
   sendername = emails(datesDF$j[1])[['SenderName']],
   subject = emails(datesDF$j[1])[['Subject']],
@@ -74,7 +74,9 @@ global = list(
   body = '',
   geoparsed = data.frame(),
   num_attachments = emails(datesDF$j[1])[['attachments']]$Count(),
-  attachment_location = 'tmp'
+  attachment_location = 'tmp',
+  expert = '',
+  location_description = ''
 )
 
 # Define the UI
@@ -103,12 +105,16 @@ ui <- fluidPage(
                column(7,
                       textInput(inputId = 'tel', label = 'Telephone Number',
                                 value = ''))),
+      textInput(inputId = 'location_description',
+                label = 'Location Description', value = ''),
       textInput(inputId = 'comment', label = 'Comment', value = ''),
       textAreaInput(inputId = 'correspondance', label = 'Correspondence',
                     height = '100px', value = global$msgbody),
       selectInput(inputId = 'expert', label = 'Expert Knowledge?',
-                  choices = c('Expert','None'),
-                  selected = 'None'),
+                  choices = c('General nature recording',
+                              'Entomology',
+                              'Apiculture'),
+                  selected = 'General nature recording'),
       checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
@@ -468,6 +474,8 @@ server <- function(input, output, session){
     global$location <- input$location
     global$correspondance <- input$correspondance
     global$comment <- input$comment
+    global$expert <- input$expert
+    global$location_description <- input$location_description
     imageStr <- NULL
     if(values$includeAtt){
       # Attachment images are being included in the upload.
@@ -482,24 +490,33 @@ server <- function(input, output, session){
       }
     }
     cat('\nUploading record to data warehouse\n')
-    serverPost <- getnonce(password = password) %>%
-      postsubmission(submission = createjson(imgString = imageStr,
-                                             email = global$sender,
-                                             tel = global$tel,
-                                             date = global$date,
-                                             location = global$location,
-                                             comment = global$comment,
-                                             correspondance = global$correspondance))
-    serverOut <- serverPost %>% fromJSON()
-    cat('Done\n')
-    
-    output$serverResponse <- renderText({
-      paste0('SUCCESS! ',
-             'Sample ID: ',serverOut$outer_id,
-             ', Occurrence ID: ',
-             serverOut$struct$children %>%
-               filter(model == 'occurrence') %>% pull(id))
-    })
+    submission <- createjson(imgString = imageStr,
+                             email = global$sender,
+                             tel = global$tel,
+                             date = global$date,
+                             location = global$location,
+                             comment = global$comment,
+                             correspondance = global$correspondance,
+                             experience = global$expert,
+                             location_description = global$location_description)
+    if(submission=='Location improperly formatted'){
+      output$serverResponse <- renderText({
+        paste0(submission)
+      })
+    } else {
+      serverPost <- getnonce(password = password) %>%
+        postsubmission(submission = submission)
+      serverOut <- serverPost %>% fromJSON()
+      cat('Done\n')
+      
+      output$serverResponse <- renderText({
+        paste0('SUCCESS! ',
+               'Sample ID: ',serverOut$outer_id,
+               ', Occurrence ID: ',
+               serverOut$struct$children %>%
+                 filter(model == 'occurrence') %>% pull(id))
+      })
+    }
   })
 }
 

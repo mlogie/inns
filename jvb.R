@@ -53,26 +53,28 @@ postimage <- function(URLauth, imgpath){
 #              Each one passed will be added to the occurrence.
 #   email: email address of the source
 #   tel: telephone number of the source
-#   experience: placeholder for now as I can't work out how to get this
-#               parameter to work
 #   correspondance: text with information from source (I know I spelled this
-#                   incorrectly, but it's how it's spelt in the warehouse)
+#                   incorrectly, but it's how it's spelled in the warehouse)
 # Returns: nicely formatted json
 createjson <- function(imgString = NULL, email = NULL,
-                       tel = NULL, date = NULL, location = 'SU990887',
-                       experience = 1, correspondance = '',
-                       comment = ''){
+                       tel = NULL, date = NULL, location = '',
+                       experience = 14684, correspondance = '',
+                       comment = '', location_description = ''){
+  if(!grepl(pattern = '^[A-Z]+[0-9]+$',location)){
+    return('Location improperly formatted')
+  }
   #  "smpAttr:1304":{"value":"Enter recorder experience"}
-  recExp <- c('General nature recording',
-              'Entomology',
-              'Apiculture')
+  experience <- switch(experience,
+                       'General nature recording' = 14684,
+                       'Entomology' = 14685,
+                       'Apiculture' = 14686)
 
   # Create the sample fields
   fields <- list(website_id = list(value = "109"),
                  survey_id = list(value = "500"),
                  entered_sref = list(value = location),
                  entered_sref_system = list(value = "OSGB"),
-                 location = list(value = "here"),
+                 location_name = list(value = location_description),
                  comment = list(value = comment),
                  `smpAttr:1140` = list(value = ""),
                  `smpAttr:43` = list(value = "TRUE"))
