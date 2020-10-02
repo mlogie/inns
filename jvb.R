@@ -98,7 +98,9 @@ createjson <- function(imgString = NULL, email = NULL,
   occ_fields <- list(zero_abundance = list(value = "f"),
                      taxa_taxon_list_id = list(value = "289248"),
                      website_id = list(value = "109"),
-                     record_status = list(value = "C"))
+                     record_status = list(value = "C"),
+                     confidential = list(value = "t"),
+                     sensitivity_precision = list(value = "100km"))
   occurrence <- list(list(fkId = "sample_id",
                           model = list(id = "occurrence",
                                        fields = occ_fields)))

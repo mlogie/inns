@@ -111,10 +111,11 @@ ui <- fluidPage(
       textAreaInput(inputId = 'correspondance', label = 'Correspondence',
                     height = '100px', value = global$msgbody),
       selectInput(inputId = 'expert', label = 'Expert Knowledge?',
-                  choices = c('General nature recording',
+                  choices = c('',
+                              'General nature recording',
                               'Entomology',
                               'Apiculture'),
-                  selected = 'General nature recording'),
+                  selected = ''),
       checkboxInput(inputId = 'includeAtt', label = 'Include Attachment Images',
                     value = TRUE),
       actionButton(inputId = 'upload_Indicia', label = 'Upload to Database'),
@@ -476,6 +477,7 @@ server <- function(input, output, session){
     global$comment <- input$comment
     global$expert <- input$expert
     global$location_description <- input$location_description
+    global$sender <- input$sender
     imageStr <- NULL
     if(values$includeAtt){
       # Attachment images are being included in the upload.

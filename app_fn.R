@@ -254,10 +254,22 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   updateTextInput(session, inputId = 'comment', label = 'Comment', value = '')
   updateTextInput(session, inputId = 'subject', label = 'Subject',
                   value = global$subject)
+  updateTextInput(session, inputId = 'location', label = 'Location',
+                  placeholder = 'gridref of observation')
+  updateTextInput(session, inputId = 'tel', label = 'Telephone Number',
+                  value = '')
   updateTextInput(session, inputId = 'subject_reply', label = 'Subject',
                   value = paste('Re:',global$subject))
   updateTextAreaInput(session, inputId = 'correspondance',
                       label = 'Correspondence', value = global$msgbody)
+  updateTextInput(session, inputId = 'location_description',
+                  label = 'Location Description', value = '')
+  updateSelectInput(session, inputId = 'expert', label = 'Expert Knowledge?',
+                    choices = c('',
+                                'General nature recording',
+                                'Entomology',
+                                'Apiculture'),
+                    selected = '')
   updateTextInput(session, inputId = 'date', label = 'Date',
                   value = as.character(global$date))
   updateTextInput(session, inputId = 'i', label = 'Select Index (i)',
@@ -265,6 +277,8 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
   output$geotable <- renderDataTable({
     NULL
   })
+  output$sendemail <- renderText({''})
+  output$serverResponse <- renderText({''})
   list(output = return_list$output,
        values = return_list$values,
        global = global)
