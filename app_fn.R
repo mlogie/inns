@@ -10,13 +10,13 @@ library(RDCOMClient)
 library(httr)
 library(digest)
 library(jsonlite)
-library(dplyr)
 library(pbapply)
 library(tools)
 library(tm)
 library(geonames)
 library(stringr)
 library(shinyBS)
+library(dplyr)
 source('./responses.R')
 tmpfiles <- dirname(tempfile())
 addResourcePath('tmpfiles', tmpfiles)
@@ -404,6 +404,47 @@ getPage4 <- function(URLgeo) {
 myPopify <- function(bs, txt){
   popify(el = bs, title =  '', placement = 'bottom', content = txt,
          trigger = 'hover',  options = list(container = 'body'))
+}
+
+updateactions <- function(currentemail, action,
+                          sampleID = NULL, occurrenceID = NULL){
+  dft <- data.frame(sender = getSender(datesDF$j[1]),
+                    sendername = currentemail[['SenderName']],
+                    subject = currentemail[['Subject']],
+                    msgbody = currentemail[['Body']],
+                    date = getDate(currentemail))
+  actions <- readRDS(file = 'actions.rds')
+  matchingrow <- lapply(1:nrow(actions), function(k){
+    actions[k,] %>% select(sender, sendername, subject, msgbody, date) %>%
+      paste0(collapse = '') == dft %>% paste0(collapse = '')
+  }) %>% unlist() %>% which()
+  if(length(matchingrow > 0)){
+    if(action == 'reply'){
+      actions[matchingrow,]$replysent = TRUE
+    } else {
+      if((!is.null(sampleID))&(!is.null(occurrenceID))){
+        actions[matchingrow,]$uploadDB = TRUE
+        actions[matchingrow,]$sampleID = sampleID %>% as.character()
+        actions[matchingrow,]$occurrenceID = occurrenceID %>% as.character()
+      }
+    }
+  } else {
+    if(action == 'reply'){
+      dft$uploadDB = FALSE
+      dft$sampleID = ''
+      dft$occurrenceID = ''
+      dft$replysent = TRUE
+    } else {
+      if((!is.null(sampleID))&(!is.null(occurrenceID))){
+        dft$uploadDB = TRUE
+        dft$sampleID = ''
+        dft$occurrenceID = ''
+        dft$replysent = FALSE
+      }
+    }
+    actions <- bind_rows(actions, dft)
+  }
+  saveRDS(actions, file = 'actions.rds')
 }
 
 # Some code to search - saving for later development

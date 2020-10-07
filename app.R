@@ -436,6 +436,8 @@ server <- function(input, output, session){
         output$sendemail <- renderText({
           paste0('Email sent')
         })
+        updateactions(currentemail = emails(datesDF$j[1]),
+                      action = 'reply')
       }
     } else {
       output$sendemail <- renderText({
