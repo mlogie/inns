@@ -76,8 +76,10 @@ createjson <- function(imgString = NULL, email = NULL,
                  entered_sref_system = list(value = "OSGB"),
                  location_name = list(value = location_description),
                  comment = list(value = comment),
+                 # Admin comment
                  `smpAttr:1140` = list(value = ""),
-                 `smpAttr:43` = list(value = "TRUE"))
+                 # Email me a copy of the record
+                 `smpAttr:43` = list(value = "FALSE"))
   if(!is.null(tel)){
     fields$`smpAttr:20` = list(value = tel)
   }
@@ -100,7 +102,8 @@ createjson <- function(imgString = NULL, email = NULL,
                      website_id = list(value = "109"),
                      record_status = list(value = "C"),
                      confidential = list(value = "t"),
-                     sensitivity_precision = list(value = "100km"))
+                     sensitivity_precision = list(value = "100000"),
+                     release_status = list(value = 'U'))
   occurrence <- list(list(fkId = "sample_id",
                           model = list(id = "occurrence",
                                        fields = occ_fields)))

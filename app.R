@@ -127,8 +127,8 @@ ui <- fluidPage(
              textInput(inputId = 'subject_reply', label = 'Subject',
                        value = global$subject),
              selectInput(inputId = 'email_text_selector', label = 'Email Response',
-                         choices = c('Giant Woodwasp','Hoverfly','European Hornet'),
-                         selected = 'Giant Woodwasp'),
+                         choices = c('Custom','Giant Woodwasp','Hoverfly','European Hornet'),
+                         selected = 'Custom'),
              textAreaInput(inputId = 'email_text',height = '100px',
                            label = 'Message Body', value = global$body),
              textOutput('sendemail'),
@@ -407,6 +407,7 @@ server <- function(input, output, session){
   
   observeEvent(input$email_text_selector, {
     global$body <- switch(input$email_text_selector,
+                          'Custom' = '',
                           'Giant Woodwasp' = woodwasp,
                           'Hoverfly' = hoverfly,
                           'European Hornet' = eurohornet)
@@ -431,7 +432,7 @@ server <- function(input, output, session){
                      recipient = input$recipient,
                      msgBody = input$email_text,
                      subject = input$subject_reply,
-                     from = NULL)
+                     from = from)
         output$sendemail <- renderText({
           paste0('Email sent')
         })
