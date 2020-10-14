@@ -59,7 +59,8 @@ postimage <- function(URLauth, imgpath){
 createjson <- function(imgString = NULL, email = NULL,
                        tel = NULL, date = NULL, location = '',
                        experience = 14684, correspondance = '',
-                       comment = '', location_description = ''){
+                       comment = '', location_description = '',
+                       recordername = ''){
   if(!grepl(pattern = '^[A-Z]+[0-9]+$',location)){
     return('Location improperly formatted')
   }
@@ -76,6 +77,9 @@ createjson <- function(imgString = NULL, email = NULL,
                  entered_sref_system = list(value = "OSGB"),
                  location_name = list(value = location_description),
                  comment = list(value = comment),
+                 # Recorder name
+                 recorder_names = list(value = recordername),
+                 #`smpAttr:127` = list(value = recordername),
                  # Admin comment
                  `smpAttr:1140` = list(value = ""),
                  # Email me a copy of the record

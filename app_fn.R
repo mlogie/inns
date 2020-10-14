@@ -222,7 +222,7 @@ getallimages <- function(emails, values, datesDF){
   if(attach_obj$Count()>0){
     imagelist <- lapply(1:attach_obj$Count(), FUN = function(k){
       dispName <- attach_obj$Item(k)[['DisplayName']]
-      if(grepl('jpg$|png$|bmp$|jpeg$',dispName)){
+      if(grepl('jpg$|png$|bmp$|jpeg$',tolower(dispName))){
         attachment_file <- tempfile()
         attach_obj$Item(k)$SaveAsFile(attachment_file)
         newName <- file.path(dirname(attachment_file),

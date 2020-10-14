@@ -476,6 +476,8 @@ server <- function(input, output, session){
     global$expert <- input$expert
     global$location_description <- input$location_description
     global$sender <- input$sender
+    global$date <- input$date
+    global$sendername <- input$name
     imageStr <- NULL
     if(values$includeAtt){
       # Attachment images are being included in the upload.
@@ -492,6 +494,7 @@ server <- function(input, output, session){
     cat('\nUploading record to data warehouse\n')
     submission <- createjson(imgString = imageStr,
                              email = global$sender,
+                             recordername = global$sendername,
                              tel = global$tel,
                              date = global$date,
                              location = global$location,
@@ -507,14 +510,15 @@ server <- function(input, output, session){
       serverPost <- getnonce(password = password) %>%
         postsubmission(submission = submission)
       serverOut <- serverPost %>% fromJSON()
-      cat('Done\n')
+      serverResp <- paste0('SUCCESS! ',
+                           'Sample ID: ',serverOut$outer_id,
+                           ', Occurrence ID: ',
+                           serverOut$struct$children %>%
+                             filter(model == 'occurrence') %>% pull(id))
+      cat(serverResp,'\n')
       
       output$serverResponse <- renderText({
-        paste0('SUCCESS! ',
-               'Sample ID: ',serverOut$outer_id,
-               ', Occurrence ID: ',
-               serverOut$struct$children %>%
-                 filter(model == 'occurrence') %>% pull(id))
+        paste0(serverResp)
       })
       updateactions(currentemail = emails(datesDF$j[1]),
                     action = 'upload',
