@@ -436,7 +436,7 @@ server <- function(input, output, session){
         output$sendemail <- renderText({
           paste0('Email sent')
         })
-        updateactions(currentemail = emails(datesDF$j[1]),
+        updateactions(currentemail = emails(datesDF$j[values$i]),
                       action = 'reply')
       }
     } else {
@@ -520,7 +520,7 @@ server <- function(input, output, session){
       output$serverResponse <- renderText({
         paste0(serverResp)
       })
-      updateactions(currentemail = emails(datesDF$j[1]),
+      updateactions(currentemail = emails(datesDF$j[values$i]),
                     action = 'upload',
                     sampleID = serverOut$outer_id,
                     occurrenceID = serverOut$struct$children %>%

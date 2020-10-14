@@ -408,7 +408,7 @@ myPopify <- function(bs, txt){
 
 updateactions <- function(currentemail, action,
                           sampleID = NULL, occurrenceID = NULL){
-  dft <- data.frame(sender = getSender(datesDF$j[1]),
+  dft <- data.frame(sender = getSender(currentemail),
                     sendername = currentemail[['SenderName']],
                     subject = currentemail[['Subject']],
                     msgbody = currentemail[['Body']],
