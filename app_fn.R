@@ -423,23 +423,23 @@ updateactions <- function(currentemail, action,
       actions[matchingrow,]$replysent = TRUE
     } else {
       if((!is.null(sampleID))&(!is.null(occurrenceID))){
-        actions[matchingrow,]$uploadDB = TRUE
-        actions[matchingrow,]$sampleID = sampleID %>% as.character()
-        actions[matchingrow,]$occurrenceID = occurrenceID %>% as.character()
+        actions[matchingrow,]$uploadDB <- TRUE
+        actions[matchingrow,]$sampleID <- sampleID %>% as.character()
+        actions[matchingrow,]$occurrenceID <- occurrenceID %>% as.character()
       }
     }
   } else {
     if(action == 'reply'){
-      dft$uploadDB = FALSE
-      dft$sampleID = ''
-      dft$occurrenceID = ''
-      dft$replysent = TRUE
+      dft$uploadDB <- FALSE
+      dft$sampleID <- ''
+      dft$occurrenceID <- ''
+      dft$replysent <- TRUE
     } else {
       if((!is.null(sampleID))&(!is.null(occurrenceID))){
-        dft$uploadDB = TRUE
-        dft$sampleID = ''
-        dft$occurrenceID = ''
-        dft$replysent = FALSE
+        dft$uploadDB <- TRUE
+        dft$sampleID <- sampleID
+        dft$occurrenceID <- occurrenceID
+        dft$replysent <- FALSE
       }
     }
     actions <- bind_rows(actions, dft)

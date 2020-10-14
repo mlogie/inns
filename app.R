@@ -465,11 +465,6 @@ server <- function(input, output, session){
 
   # Upload the record to Indicia
   observeEvent(input$upload_Indicia, {
-      # json_sample <- getnonce(password = PASSWORD) %>%
-      #   postimage(imgpath = 'test.png') %>% createjson(correspondance = 'test')
-      #   #### Post your submission
-      # serverPost <- getnonce(password = PASSWORD) %>%
-      #   postsubmission(submission = json_sample)
     if(input$tel == ''){
       global$tel <- NULL
     } else {
@@ -521,6 +516,11 @@ server <- function(input, output, session){
                serverOut$struct$children %>%
                  filter(model == 'occurrence') %>% pull(id))
       })
+      updateactions(currentemail = emails(datesDF$j[1]),
+                    action = 'upload',
+                    sampleID = serverOut$outer_id,
+                    occurrenceID = serverOut$struct$children %>%
+                      filter(model == 'occurrence') %>% pull(id))
     }
   })
 }
