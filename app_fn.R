@@ -90,7 +90,7 @@ getDate <- function(email){
   dateOut <- tryCatch({
     floor(email$ReceivedTime()) + as.Date("1899-12-30")
   }, error = function(error) {
-    return('Could not extract date')
+    return(as.Date("1899-12-30"))
   })
   dateOut
 }

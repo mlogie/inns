@@ -30,12 +30,9 @@ if(computerspeed == 1){
     data.frame(dates = getDate(emails(i)),
                subj = emails(i)[['Subject']],
                Sender = getSender(emails(i)),
-               j = i)
-  })
-  datelist <- lapply(datesDF, FUN = function(i){
-    class(i$dates)=='Date'
-  }) %>% unlist()
-  datesDF <- datesDF[-which(!datelist)] %>% bind_rows()
+               j = i,
+               stringsAsFactors = FALSE)
+  }) %>% bind_rows()
   datesDF <- datesDF %>% arrange(desc(dates))
 } else if(computerspeed == 2){
   cat('Reading in email dates\n')
@@ -43,12 +40,9 @@ if(computerspeed == 1){
     data.frame(dates = getDate(emails(i)),
                subj = '',
                Sender = '',
-               j = i)
-  })
-  datelist <- lapply(datesDF, FUN = function(i){
-    class(i$dates)=='Date'
-  }) %>% unlist()
-  datesDF <- datesDF[-which(!datelist)] %>% bind_rows()
+               j = i,
+               stringsAsFactors = FALSE)
+  }) %>% bind_rows()
   datesDF <- datesDF %>% arrange(desc(dates))
 } else {
   datesDF <- data.frame(dates = '',
