@@ -447,6 +447,9 @@ updateactions <- function(currentemail, action,
   saveRDS(actions, file = 'actions.rds')
 }
 
+overwrite_actions <- function(){
+  saveRDS(object = readRDS('actions.rds')[0,],file = 'actions.rds')
+}
 # Some code to search - saving for later development
 #search.phrase <- '2020-07-09'
 #search <- OutApp$AdvancedSearch(

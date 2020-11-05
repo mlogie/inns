@@ -148,11 +148,19 @@ ui <- fluidPage(
              }
              ),
     tabPanel('Tools',
+             HTML('<br>'),
              fluidRow(
                column(6,
                       actionButton(inputId='launchBrowser',label='GridRef Finder')),
                column(6,
                       actionButton(inputId='launchBrowser2',label='GAGR'))),
+             HTML("<hr>"),
+             fluidRow(
+               column(6,
+                 bsButton(inputId = 'clearActions', label = 'Clear Actions')),
+               column(6,
+                 checkboxInput(inputId = 'turnonclearActions', label = 'Turn on Clear'))),
+             textOutput('clearMessage'),
              HTML("<hr>"),
              fluidRow(
                column(6,
@@ -410,6 +418,20 @@ server <- function(input, output, session){
                         label = 'Message Body', value = global$body)
   })
   
+  # Clear Actions rds
+  observeEvent(input$clearActions, {
+    if(input$turnonclearActions){
+      overwrite_actions()
+      output$clearMessage <- renderText({
+        paste0('Actions File Cleared')
+      })
+    } else {
+      output$clearMessage <- renderText({
+        paste0('Actions File NOT Cleared - please check the \'Turn on Clear\' button')
+      })
+    }
+  })
+
   # Send an email if this button is pressed
   observeEvent(input$send_thanksbutno, {
     if(input$emailOn){
