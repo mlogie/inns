@@ -1,4 +1,6 @@
-woodwasp <- 'Thank you so much for your e-mail.  We receive lots of reports of species that look like Asian hornets and I am pleased to say that the photograph you have sent is not of an Asian Hornet. Your photograph shows a Wood Wasp. It is a wasp mimic and is also a Hymenopteran like wasps but the larvae feed in the trunks of trees unlike wasps. It is completely harmless and the \'stinger\' is actually just an egg laying body part (ovipositor) elongated to inject eggs into host trees. The ovipositor is modified in other hymenoptera (e.g. bees and wasps) to sting. More information can be found at the following sites:<br>
+responses <- list(
+`Custom` = '',
+`Giant Woodwasp` = 'Thank you so much for your e-mail.  We receive lots of reports of species that look like Asian hornets and I am pleased to say that the photograph you have sent is not of an Asian Hornet. Your photograph shows a Wood Wasp. It is a wasp mimic and is also a Hymenopteran like wasps but the larvae feed in the trunks of trees unlike wasps. It is completely harmless and the \'stinger\' is actually just an egg laying body part (ovipositor) elongated to inject eggs into host trees. The ovipositor is modified in other hymenoptera (e.g. bees and wasps) to sting. More information can be found at the following sites:<br>
   
 http://www.uksafari.com/woodwasp.htm
 
@@ -26,9 +28,8 @@ UK Centre for Ecology & Hydrology,
 Benson Lane,
 Crowmarsh Gifford,
 Wallingford,
-Oxfordshire OX10 8BB'
-
-hoverfly <- 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is not of an Asian Hornet. Your photograph shows a hoverfly, many of which are extremely good wasp and bee mimics. I have pasted a couple of links for further information about hoverflies:
+Oxfordshire OX10 8BB',
+`Hoverfly` = 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is not of an Asian Hornet. Your photograph shows a hoverfly, many of which are extremely good wasp and bee mimics. I have pasted a couple of links for further information about hoverflies:
   
 https://www.buglife.org.uk/bugs-and-habitats/hornet-hoverfly 
 https://www.naturespot.org.uk/species/common-drone-fly
@@ -62,9 +63,8 @@ UK Centre for Ecology & Hydrology
 Benson Lane,
 Crowmarsh Gifford
 Wallingford
-Oxfordshire OX10 8BB'
-
-eurohornet <- 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is a native species - the European Hornet, Vespa crabro.
+Oxfordshire OX10 8BB',
+`European Hornet` = 'Thank you so much for your e-mail. We receive lots of reports of native species that look like Asian hornets and I am pleased to say that the photograph you have sent is a native species - the European Hornet, Vespa crabro.
 
 European Hornet activity tends to be most noticed in the spring, when queens start becoming active after overwintering and start searching for suitable nesting sites, and then again in late summer when colonies start to disperse searching for food etc - at this time of year they are often seen during the night as well as the day as they are attracted to light in moderate numbers.
 
@@ -97,5 +97,5 @@ UK Centre for Ecology & Hydrology
 Benson Lane,
 Crowmarsh Gifford
 Wallingford
-Oxfordshire OX10 8BB'
+Oxfordshire OX10 8BB')
 

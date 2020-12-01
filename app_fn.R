@@ -279,8 +279,7 @@ jumpTo <- function(emails, values, global, datesDF, output, session){
                   value = as.character(values$i))
   updateSelectInput(session, inputId = 'email_text_selector',
                     label = 'Email Response',
-                    choices = c('Custom','Giant Woodwasp',
-                                'Hoverfly','European Hornet'),
+                    choices = c(names(responses)),
                     selected = 'Custom')
   updateTextAreaInput(session, inputId = 'email_text',
                       label = 'Message Body', value = '')

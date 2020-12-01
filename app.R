@@ -126,7 +126,7 @@ ui <- fluidPage(
              textInput(inputId = 'subject_reply', label = 'Subject',
                        value = global$subject),
              selectInput(inputId = 'email_text_selector', label = 'Email Response',
-                         choices = c('Custom','Giant Woodwasp','Hoverfly','European Hornet'),
+                         choices = c(names(responses)),
                          selected = 'Custom'),
              textAreaInput(inputId = 'email_text',height = '100px',
                            label = 'Message Body', value = global$body),
@@ -414,12 +414,7 @@ server <- function(input, output, session){
   })
   
   observeEvent(input$email_text_selector, {
-    global$body <- switch(input$email_text_selector,
-                          'Custom' = '',
-                          'Giant Woodwasp' = woodwasp,
-                          'Hoverfly' = hoverfly,
-                          'European Hornet' = eurohornet)
-
+    global$body <- responses[[input$email_text_selector]]
     updateTextAreaInput(session, inputId = 'email_text',
                         label = 'Message Body', value = global$body)
   })
