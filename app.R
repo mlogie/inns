@@ -27,23 +27,27 @@ computerspeed <- 2
 if(computerspeed == 1){
   cat('Reading in emails\n')
   datesDF <- pblapply(1:num_emails, FUN = function(i){
-    data.frame(dates = getDate(emails(i)),
+    dateEmail <- getDate(emails(i))
+    data.frame(dates = as.Date(dateEmail),
+               datetime = dateEmail,
                subj = emails(i)[['Subject']],
                Sender = getSender(emails(i)),
                j = i,
                stringsAsFactors = FALSE)
   }) %>% bind_rows()
-  datesDF <- datesDF %>% arrange(desc(dates))
+  datesDF <- datesDF %>% arrange(desc(datetime))
 } else if(computerspeed == 2){
   cat('Reading in email dates\n')
   datesDF <- pblapply(1:num_emails, FUN = function(i){
-    data.frame(dates = getDate(emails(i)),
+    dateEmail <- getDate(emails(i))
+    data.frame(dates = as.Date(dateEmail),
+               datetime = dateEmail,
                subj = '',
                Sender = '',
                j = i,
                stringsAsFactors = FALSE)
   }) %>% bind_rows()
-  datesDF <- datesDF %>% arrange(desc(dates))
+  datesDF <- datesDF %>% arrange(desc(datetime))
 } else {
   datesDF <- data.frame(dates = '',
                         subj = '',
@@ -60,7 +64,8 @@ global <- list(
   sendername = emails(datesDF$j[1])[['SenderName']],
   subject = emails(datesDF$j[1])[['Subject']],
   msgbody = emails(datesDF$j[1])[['Body']],
-  date = getDate(emails(datesDF$j[1])),
+  date = as.Date(getDate(emails(datesDF$j[1]))),
+  datetime = getDate(emails(datesDF$j[1])),
   tel = '',
   location = '',
   comment = '',
@@ -206,7 +211,8 @@ server <- function(input, output, session){
       sendername = emails(datesDF$j[1])[['SenderName']],
       subject = emails(datesDF$j[1])[['Subject']],
       msgbody = emails(datesDF$j[1])[['Body']],
-      date = getDate(emails(datesDF$j[1])),
+      date = as.Date(getDate(emails(datesDF$j[1]))),
+      datetime = getDate(emails(datesDF$j[1])),
       attachments = ifelse(emails(datesDF$j[1])[['attachments']]$Count()>0,
                            emails(datesDF$j[1])[['attachments']]$Item(1)[['DisplayName']],
                            ''),
@@ -363,7 +369,7 @@ server <- function(input, output, session){
   
   if(computerspeed == 1){
     output$summaryDF <- renderDataTable({
-      (datesDF %>% select(i, Subject, Date, Sender))
+      (datesDF %>% select(i, Subject, datetime, Sender))
     })
   }
   

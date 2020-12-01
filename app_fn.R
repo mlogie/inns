@@ -88,9 +88,10 @@ getSender <- function(email){
 # Function to get date from email pointer
 getDate <- function(email){
   dateOut <- tryCatch({
-    floor(email$ReceivedTime()) + as.Date("1899-12-30")
+    #floor(email$ReceivedTime()) + as.Date("1899-12-30")
+    email$ReceivedTime()*24*60*60 + as.POSIXct("1899-12-30 00:00")
   }, error = function(error) {
-    return(as.Date("1899-12-30"))
+    return(as.POSIXct("1899-12-30 00:00"))
   })
   dateOut
 }
@@ -113,7 +114,9 @@ extract_contents <- function(emails, values, global, datesDF){
   values$sendername <- global$sendername <- emails(datesDF$j[values$i])[['SenderName']]
   values$subject <- global$subject <- emails(datesDF$j[values$i])[['Subject']]
   values$msgbody <- global$msgbody <- emails(datesDF$j[values$i])[['Body']]
-  values$date <- global$date <- getDate(emails(datesDF$j[values$i]))
+  dateEmail <- getDate(emails(datesDF$j[values$i]))
+  values$date <- global$date <- as.Date(dateEmail)
+  values$datetime <- global$datetime <- dateEmail
   values$num_attachments <- global$num_attachments <-
     emails(datesDF$j[values$i])[['attachments']]$Count()
   list(values = values, global = global)
@@ -408,11 +411,12 @@ myPopify <- function(bs, txt){
 
 updateactions <- function(currentemail, action,
                           sampleID = NULL, occurrenceID = NULL){
+  dateEmail <- getDate(currentemail)
   dft <- data.frame(sender = getSender(currentemail),
                     sendername = currentemail[['SenderName']],
                     subject = currentemail[['Subject']],
                     msgbody = currentemail[['Body']],
-                    date = getDate(currentemail))
+                    date = as.Date(dateEmail))
   actions <- readRDS(file = 'actions.rds')
   matchingrow <- lapply(1:nrow(actions), function(k){
     actions[k,] %>% select(sender, sendername, subject, msgbody, date) %>%
