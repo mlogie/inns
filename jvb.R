@@ -1,10 +1,15 @@
+# Set the URL base for the server
+# This can be overwritten by declaring a different value in pwd.R
+URLbase <- 'http://devwarehouse.indicia.org.uk/'
+
 # Function to get security nonce and authentication token
 # Takes:
 #   URLnonce: set to the dev warehouse url for now
 #   password: user password
 # Returns: text string to append to website for posting
-getnonce <- function(URLnonce = 'http://devwarehouse.indicia.org.uk/index.php/services/security/get_nonce',
+getnonce <- function(URLbase = 'http://devwarehouse.indicia.org.uk/',
                      password){
+  URLnonce <- paste0(URLbase, 'index.php/services/security/get_nonce')
   r <- POST(URLnonce,
             body = list(website_id = 109))
   nonce <- httr::content(x = r, as = 'text')
@@ -23,8 +28,10 @@ getnonce <- function(URLnonce = 'http://devwarehouse.indicia.org.uk/index.php/se
 #   URLauth: the URL string from function getnonce()
 #   submission: the sample, in json format
 # Returns: the content of the return message from the warehouse
-postsubmission <- function(URLauth, submission){
-  URL <- paste0('http://devwarehouse.indicia.org.uk/index.php/services/data/save',
+postsubmission <- function(URLauth, submission,
+                           URLbase = 'http://devwarehouse.indicia.org.uk/'){
+  URL <- paste0(URLbase,
+                'index.php/services/data/save',
                 URLauth)
   
   r <- httr::POST(URL,
@@ -37,8 +44,10 @@ postsubmission <- function(URLauth, submission){
 #   URLauth: the URL string from function getnonce()
 #   imgpath: the path to the image
 # Returns: the image path from the server e.g. '123456789image.png'
-postimage <- function(URLauth, imgpath){
-  URLimg <- paste0('http://devwarehouse.indicia.org.uk/index.php/services/data/handle_media',
+postimage <- function(URLauth, imgpath,
+                      URLbase = 'http://devwarehouse.indicia.org.uk/'){
+  URLimg <- paste0(URLbase,
+                   'index.php/services/data/handle_media',
                    URLauth)
   
   res <- POST(url=URLimg,

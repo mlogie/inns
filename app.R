@@ -503,8 +503,8 @@ server <- function(input, output, session){
       if(!is.null(imagelist)){
         cat('\nUploading images to data warehouse\n')
         imageStr <- pblapply(imagelist, FUN = function(img){
-          getnonce(password = password) %>%
-            postimage(imgpath = img)
+          getnonce(password = password, URLbase = URLbase) %>%
+            postimage(imgpath = img, URLbase = URLbase)
         }) %>% unlist()
       }
     }
@@ -524,8 +524,9 @@ server <- function(input, output, session){
         paste0(submission)
       })
     } else {
-      serverPost <- getnonce(password = password) %>%
-        postsubmission(submission = submission)
+      serverPost <- getnonce(password = password, URLbase = URLbase) %>%
+        postsubmission(URLbase = URLbase,
+                       submission = submission)
       serverOut <- serverPost %>% fromJSON()
       serverResp <- paste0('SUCCESS! ',
                            'Sample ID: ',serverOut$outer_id,
