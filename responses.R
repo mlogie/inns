@@ -265,7 +265,7 @@ York Biotech,
 Sand Hutton, 
 York, 
 YO41 1LZ',
-`American record` = 'Many thanks for sending in a record of your suspected sighting. This account focuses on the recording of Asian hornets in the U.K., please could I check that your record was submitted with the correct co-ordinates as the location is showing as being in America\\?
+`American record` = 'Many thanks for sending in a record of your suspected sighting. This account focuses on the recording of Asian hornets in the U.K., please could I check that your record was submitted with the correct co-ordinates as the location is showing as being in America?
 
 If your record is indeed from America please see the following guidance: 
 
